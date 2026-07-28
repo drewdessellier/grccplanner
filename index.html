@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#183f4c">
+<title>Drew's GRCC Fall 2026 Dynamic Planner v4</title>
+<style>
+:root{
+  --bg:#f2f5f5;--card:#fff;--text:#17272d;--muted:#64757b;--line:#dce5e7;
+  --accent:#1f6777;--accent-dark:#173f4c;--soft:#e6f1f3;--warm:#f7efe4;
+  --good:#e9f4ec;--danger:#f8e9e7;--shadow:0 12px 34px rgba(20,54,64,.09)
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+button,input,select,textarea{font:inherit;font-size:16px}button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+header{background:linear-gradient(135deg,#173f4c,#28778a);color:#fff;padding:calc(26px + env(safe-area-inset-top)) 18px 28px}
+.header-inner{max-width:1120px;margin:auto}.eyebrow{margin:0 0 7px;text-transform:uppercase;letter-spacing:.12em;font-size:.76rem;opacity:.82}
+h1{margin:0;font-size:clamp(2rem,7vw,3.7rem);line-height:1.04;letter-spacing:-.025em}.subtitle{max-width:820px;margin:12px 0 0;opacity:.93}
+.quick-facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}.quick-facts span{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);border-radius:999px;padding:6px 10px;font-size:.84rem}
+.shell{max-width:1120px;margin:-12px auto 42px;padding:0 12px}.tab-radio{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.tabs{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow-x:auto;padding:11px 3px;background:rgba(242,245,245,.96);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:44px;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:999px;padding:10px 14px;font-weight:750;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.tab:focus-visible{outline:3px solid rgba(31,103,119,.28);outline-offset:2px}
+#tab-build:checked~.tabs [for="tab-build"],#tab-week:checked~.tabs [for="tab-week"],#tab-assignments:checked~.tabs [for="tab-assignments"],#tab-courses:checked~.tabs [for="tab-courses"],#tab-training:checked~.tabs [for="tab-training"],#tab-sleep:checked~.tabs [for="tab-sleep"],#tab-checklist:checked~.tabs [for="tab-checklist"],#tab-backup:checked~.tabs [for="tab-backup"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:21px;box-shadow:var(--shadow);padding:clamp(18px,4vw,38px)}
+#tab-build:checked~#panel-build,#tab-week:checked~#panel-week,#tab-assignments:checked~#panel-assignments,#tab-courses:checked~#panel-courses,#tab-training:checked~#panel-training,#tab-sleep:checked~#panel-sleep,#tab-checklist:checked~#panel-checklist,#tab-backup:checked~#panel-backup{display:block}
+h2{margin:0 0 9px;font-size:clamp(1.6rem,5vw,2.35rem);line-height:1.12}h3{margin:27px 0 9px;font-size:1.25rem}h4{margin:0 0 7px;color:var(--accent-dark)}p{margin:8px 0 14px}.intro{color:var(--muted);max-width:820px}
+.grid{display:grid;gap:13px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:16px}.soft{background:#fbfdfd}.metric{border:1px solid var(--line);border-radius:14px;background:#fbfcfc;padding:13px}.metric strong{display:block;color:var(--accent-dark);font-size:1.35rem;line-height:1.1}.metric span{font-size:.82rem;color:var(--muted)}
+.callout{border-left:4px solid var(--accent);background:var(--soft);border-radius:0 13px 13px 0;padding:14px 16px;margin:16px 0}.callout.warm{background:var(--warm);border-color:#9b6a2d}.callout.good{background:var(--good);border-color:#3f7c51}.callout.danger{background:var(--danger);border-color:#9a493f}
+label{font-weight:700;font-size:.91rem;color:var(--accent-dark)}.helper{font-size:.82rem;color:var(--muted);margin-top:5px}.field{display:grid;gap:5px}.field input,.field select,.field textarea{width:100%;border:1px solid #cbd8dc;border-radius:11px;background:#fff;padding:10px 11px;color:var(--text)}.field input[type="time"],.field input[type="date"]{min-height:44px}.field textarea{min-height:88px;resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin:16px 0}.btn{border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--text);padding:10px 14px;font-weight:750}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn:active{transform:translateY(1px);opacity:.88}.btn[aria-busy="true"]{opacity:.68;pointer-events:none}.btn.danger{border-color:#d9aaa4;color:#7a332b}.btn.small{padding:7px 10px;font-size:.85rem}
+.shift-card{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fbfcfc}.shift-card h4{display:flex;justify-content:space-between;gap:8px}.pref{font-size:.74rem;border-radius:999px;padding:4px 7px;background:var(--soft);color:var(--accent-dark)}.custom-time{display:none;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.custom-time.show{display:grid}
+.schedule-day{border:1px solid var(--line);border-radius:16px;padding:15px;background:#fff}.day-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.day-head h3{margin:0}.day-meta{font-size:.82rem;color:var(--muted);text-align:right}.timeline{list-style:none;padding:0;margin:0}.timeline li{display:grid;grid-template-columns:104px minmax(0,1fr);gap:10px;border-top:1px solid var(--line);padding:9px 0;margin:0}.timeline li:first-child{border-top:0}.timeline time{font-weight:800;color:var(--accent-dark);font-size:.87rem}.event-title{font-weight:720}.event-note{display:block;color:var(--muted);font-size:.81rem;margin-top:2px}.tag{display:inline-block;border-radius:999px;background:var(--soft);color:var(--accent-dark);padding:3px 7px;font-size:.72rem;font-weight:800;margin-left:5px}.tag.work{background:#f4eee6}.tag.training{background:#eaf2eb}.tag.study{background:#eef0f6}.tag.social{background:#f5edf4}
+.assignment-row{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(110px,.7fr)) auto;gap:9px;align-items:end;border-top:1px solid var(--line);padding:11px 0}.assignment-row:first-child{border-top:0}.assignment-title{font-weight:780}.assignment-meta{font-size:.82rem;color:var(--muted)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin:15px 0}table{width:100%;min-width:680px;border-collapse:collapse}th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--soft);color:var(--accent-dark);font-size:.89rem}tr:last-child td{border-bottom:0}
+ul,ol{padding-left:22px}li{margin:6px 0}.checklist{display:grid;gap:8px}.check{display:grid;grid-template-columns:24px 1fr;gap:9px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:11px}.check input{width:19px;height:19px;margin-top:2px;accent-color:var(--accent)}
+.warning-list{display:grid;gap:8px}.warning{border-radius:11px;padding:10px 12px;background:var(--warm);font-size:.9rem}.warning.bad{background:var(--danger)}
+.empty{border:1px dashed #9fb4bb;border-radius:14px;padding:18px;text-align:center;color:var(--muted)}.course-code{font-weight:850;color:var(--accent-dark)}
+hr{border:0;border-top:1px solid var(--line);margin:25px 0}.hidden{display:none!important}.footer{max-width:1100px;margin:0 auto 28px;padding:0 18px calc(8px + env(safe-area-inset-bottom));text-align:center;color:var(--muted);font-size:.85rem}
+
+.app-status{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fbfdfd;margin:12px 0 18px}.status-dot{width:10px;height:10px;border-radius:999px;background:#b36b31;margin-top:6px;flex:0 0 auto}.js-ready .status-dot{background:#3f7c51}.app-status strong{display:block}.work-entry-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:22px 0 10px}.work-entry-title h3{margin:0}.project-badge{display:inline-block;border-radius:999px;padding:5px 9px;background:var(--warm);color:#704b20;font-size:.76rem;font-weight:800}.build-note{font-size:.86rem;color:var(--muted);margin:0}.shift-card select{min-height:48px}.shift-card .custom-time{display:grid}.shift-card .custom-time.is-inactive{display:none}.build-actions{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:16px;padding:10px;margin:20px 0 0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}.build-actions .btn.primary{min-height:50px;font-size:1rem}.settings-save{margin-top:16px}.inline-status{min-height:24px;font-size:.88rem;color:var(--muted)}.inline-status.good{color:#315f3d}.inline-status.bad{color:#873d34}.shift-summary{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 4px}.shift-summary span{border:1px solid var(--line);border-radius:999px;padding:5px 8px;background:#fff;font-size:.8rem}.settings-grid{margin-top:12px}
+
+@media(max-width:850px){.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three,.grid.two{grid-template-columns:1fr}.assignment-row{grid-template-columns:1fr 1fr}.assignment-row .wide{grid-column:1/-1}}
+@media(max-width:540px){#shiftGrid{grid-template-columns:1fr}.build-actions .actions{margin:0}.build-actions .btn{width:100%}.work-entry-title{display:block}.project-badge{margin-top:8px}.shell{padding:0 6px}.panel{padding:20px 15px;border-radius:16px}.grid.four{grid-template-columns:1fr 1fr}.timeline li{grid-template-columns:88px minmax(0,1fr);gap:7px}.assignment-row{grid-template-columns:1fr}.assignment-row .wide{grid-column:auto}.actions .btn{flex:1 1 auto}.custom-time{grid-template-columns:1fr}.day-meta{max-width:120px}}
+@media print{body{background:#fff}.tabs,.no-print,header .subtitle{display:none!important}.shell{max-width:none;margin:0;padding:0}.panel{display:block!important;border:0;box-shadow:none;border-radius:0;padding:0;page-break-after:always}.panel:last-child{page-break-after:auto}header{background:#fff!important;color:#111;padding:0 0 16px;border-bottom:2px solid #173f4c}.schedule-day,.card,.metric{break-inside:avoid}.footer{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <p class="eyebrow">GRCC Fall 2026 • Weekly schedule generator</p>
+    <h1>Drew's Semester Command Center</h1>
+    <p class="subtitle">Enter the valet schedule your managers post on Sunday, add assignments, and build a realistic week around class, commuting, sleep, hybrid training, Young Life, church, and open social time.</p>
+    <div class="quick-facts"><span>14 credits</span><span>4 required training sessions</span><span>5th session optional</span><span>7–8 hours sleep</span><span>1-hour morning minimum</span></div>
+  </div>
+</header>
+
+<div class="shell">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-build" checked>
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-week">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-assignments">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-courses">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-training">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-sleep">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-checklist">
+  <input class="tab-radio" type="radio" name="planner-tab" id="tab-backup">
+
+  <nav class="tabs no-print" aria-label="Planner sections" role="tablist">
+    <label class="tab" for="tab-build" data-panel="build" role="tab" tabindex="0">Build My Week</label>
+    <label class="tab" for="tab-week" data-panel="week" role="tab" tabindex="0">Generated Week</label>
+    <label class="tab" for="tab-assignments" data-panel="assignments" role="tab" tabindex="0">Assignments</label>
+    <label class="tab" for="tab-courses" data-panel="courses" role="tab" tabindex="0">Courses</label>
+    <label class="tab" for="tab-training" data-panel="training" role="tab" tabindex="0">Hybrid Training</label>
+    <label class="tab" for="tab-sleep" data-panel="sleep" role="tab" tabindex="0">Planner Settings</label>
+    <label class="tab" for="tab-checklist" data-panel="checklist" role="tab" tabindex="0">Weekly Checklist</label>
+    <label class="tab" for="tab-backup" data-panel="backup" role="tab" tabindex="0">Rules & Data</label>
+  </nav>
+
+  <section class="panel" id="panel-build" role="tabpanel">
+    <h2>Build My Week</h2>
+    <p class="intro">This page is only for the information that changes each week: the date and the valet shifts your managers post on Sunday. Your classes, commutes, church, Young Life, sleep rules, and training rules stay saved in Planner Settings.</p>
+    <div class="app-status" id="appStatus" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><div><strong id="appStatusTitle">Checking planner controls…</strong><span id="appStatusText">When this changes to “Planner controls are active,” the buttons are ready. If it stays here, the iPhone preview has blocked JavaScript rather than the planner code.</span></div></div>
+    <div class="callout danger hidden" id="runtimeError" role="alert"></div>
+    <noscript><div class="callout warm"><strong>Open in Safari for the generator:</strong> the work fields and tabs remain visible here, but Build My Week, saving, assignments, and checklists need JavaScript. In the iPhone Files app, press Share → Open in Safari.</div></noscript>
+
+    <div class="grid two">
+      <div class="field"><label for="weekStart">Week starting Monday</label><input type="date" id="weekStart"><div class="helper">Choosing any date automatically converts it to that week's Monday.</div></div>
+      <article class="card soft"><h4>Weekly process</h4><p class="build-note">Select the shift for every day, leave days off as <strong>Off</strong>, then press <strong>Build My Week</strong>. The planner automatically creates the rest.</p><div class="shift-summary" id="shiftSummary"><span>0 shifts</span><span>0 hours</span></div></article>
+    </div>
+
+    <div class="work-entry-title"><div><h3>Enter this week's work schedule</h3><p class="build-note">7–3, 8–4, 9–5, 10–6, 11–7, 12–8, Off, or a custom shift.</p></div><span class="project-badge">Project v4 • touch-safe • syllabi pending</span></div>
+
+    <div class="actions">
+      <button class="btn" id="templateSundayWork" type="button">Load Sunday-work example</button>
+      <button class="btn" id="templateSundayOff" type="button">Load Sunday-off example</button>
+      <button class="btn" id="clearShifts" type="button">Set every day to Off</button>
+    </div>
+
+    <div class="grid four" id="shiftGrid">
+<div class="shift-card" data-day-card="0">
+      <h4>Monday<span class="pref">No work past 4:30</span></h4>
+      <div class="field"><label for="shift-0">Valet shift</label><select id="shift-0" data-shift="0"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-0" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-0">Custom start</label><input type="time" id="custom-start-0" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-0">Custom end</label><input type="time" id="custom-end-0" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="1">
+      <h4>Tuesday<span class="pref">Class 9–12</span></h4>
+      <div class="field"><label for="shift-1">Valet shift</label><select id="shift-1" data-shift="1"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-1" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-1">Custom start</label><input type="time" id="custom-start-1" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-1">Custom end</label><input type="time" id="custom-end-1" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="2">
+      <h4>Wednesday<span class="pref">Preferred 12–8</span></h4>
+      <div class="field"><label for="shift-2">Valet shift</label><select id="shift-2" data-shift="2"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-2" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-2">Custom start</label><input type="time" id="custom-start-2" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-2">Custom end</label><input type="time" id="custom-end-2" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="3">
+      <h4>Thursday<span class="pref">Morning preferred</span></h4>
+      <div class="field"><label for="shift-3">Valet shift</label><select id="shift-3" data-shift="3"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-3" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-3">Custom start</label><input type="time" id="custom-start-3" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-3">Custom end</label><input type="time" id="custom-end-3" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="4">
+      <h4>Friday<span class="pref">Morning preferred</span></h4>
+      <div class="field"><label for="shift-4">Valet shift</label><select id="shift-4" data-shift="4"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-4" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-4">Custom start</label><input type="time" id="custom-start-4" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-4">Custom end</label><input type="time" id="custom-end-4" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="5">
+      <h4>Saturday<span class="pref">Morning preferred</span></h4>
+      <div class="field"><label for="shift-5">Valet shift</label><select id="shift-5" data-shift="5"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-5" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-5">Custom start</label><input type="time" id="custom-start-5" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-5">Custom end</label><input type="time" id="custom-end-5" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+<div class="shift-card" data-day-card="6">
+      <h4>Sunday<span class="pref">Every other Sunday AM</span></h4>
+      <div class="field"><label for="shift-6">Valet shift</label><select id="shift-6" data-shift="6"><option value="off" selected>Off</option><option value="07:00-15:00">7:00–3:00</option><option value="08:00-16:00">8:00–4:00</option><option value="09:00-17:00">9:00–5:00</option><option value="10:00-18:00">10:00–6:00</option><option value="11:00-19:00">11:00–7:00</option><option value="12:00-20:00">12:00–8:00</option><option value="custom">Custom shift</option></select></div>
+      <div class="custom-time is-inactive" id="custom-6" aria-label="Custom shift times">
+        <div class="field"><label for="custom-start-6">Custom start</label><input type="time" id="custom-start-6" value="07:00" disabled></div>
+        <div class="field"><label for="custom-end-6">Custom end</label><input type="time" id="custom-end-6" value="15:00" disabled></div>
+      </div>
+      <div class="helper">Custom times activate only when “Custom shift” is selected.</div>
+    </div>
+    </div>
+
+    <div class="build-actions">
+      <div class="actions"><button class="btn primary" id="buildWeek" type="button">Build My Week From These Shifts</button></div>
+      <div class="inline-status" id="buildMessage" aria-live="polite">Changes save automatically on this device when browser storage is available.</div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-week" role="tabpanel">
+    <h2>Generated Week</h2>
+    <p class="intro">This updates whenever you press <strong>Build My Week</strong>. The generator protects class and work first, then sleep, training, study, and open social time.</p>
+    <div class="grid four" id="weekMetrics"></div>
+    <div id="weekWarnings"></div>
+    <div class="actions no-print"><button class="btn primary" id="rebuildWeek" type="button">Rebuild From Saved Shifts</button><button class="btn" id="printWeek" type="button">Print / Save PDF</button></div>
+    <div class="grid two" id="scheduleOutput"></div>
+  </section>
+
+  <section class="panel" id="panel-assignments" role="tabpanel">
+    <h2>Assignments & Deadlines</h2>
+    <p class="intro">Add anything your professors post. When the syllabi become available, this file can be updated to preload the major deadlines.</p>
+    <div class="grid three">
+      <div class="field"><label for="assignmentCourse">Course</label><select id="assignmentCourse"><option>BA 103 Intro to Business</option><option>BA 145 Computer Applications</option><option>BA 207 Business Law</option><option>BA 256 Accounting I</option></select></div>
+      <div class="field"><label for="assignmentTitle">Assignment</label><input id="assignmentTitle" placeholder="Chapter quiz, Excel project, exam…"></div>
+      <div class="field"><label for="assignmentDue">Due date & time</label><input type="datetime-local" id="assignmentDue"></div>
+      <div class="field"><label for="assignmentMinutes">Estimated work time</label><select id="assignmentMinutes"><option value="30">30 minutes</option><option value="60">1 hour</option><option value="90" selected>1.5 hours</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option><option value="360">6 hours</option></select></div>
+      <div class="field"><label for="assignmentPriority">Priority</label><select id="assignmentPriority"><option value="high">High</option><option value="normal" selected>Normal</option><option value="low">Low</option></select></div>
+      <div class="field"><label for="assignmentNotes">Notes</label><input id="assignmentNotes" placeholder="Pages, software, materials…"></div>
+    </div>
+    <div class="actions"><button class="btn primary" id="addAssignment" type="button">Add Assignment</button></div>
+    <div id="assignmentList"></div>
+    <div class="callout warm"><strong>Personal deadline:</strong> the generator tries to finish assignments by Friday or at least 24 hours before the actual due time whenever your work schedule allows.</div>
+  </section>
+
+  <section class="panel" id="panel-courses" role="tabpanel">
+    <h2>Fall 2026 Courses</h2>
+    <div class="grid two">
+      <article class="card"><h4><span class="course-code">BA 103</span> Intro to Business</h4><p><strong>4 credits • Online asynchronous</strong><br>Aug. 24–Oct. 12</p><p>Compressed seven-week course. Complete its work early in the week and never let modules stack up.</p></article>
+      <article class="card"><h4><span class="course-code">BA 145</span> Computer Applications in Business I</h4><p><strong>3 credits • Online asynchronous</strong><br>Aug. 24–Dec. 9</p><p>Practice inside the actual software. Watching a demonstration does not replace completing the steps yourself.</p></article>
+      <article class="card"><h4><span class="course-code">BA 207</span> Business Law I</h4><p><strong>3 credits • In person</strong><br>Monday & Wednesday, 9:30–11:00 a.m.<br>Aug. 24–Dec. 7</p><p>Use short same-day note reviews, then organize cases with issue, rule, application, and conclusion.</p></article>
+      <article class="card"><h4><span class="course-code">BA 256</span> Principles of Accounting I</h4><p><strong>4 credits • Hybrid</strong><br>Tuesday, 9:00 a.m.–12:00 p.m.<br>Aug. 24–Dec. 9</p><p>Practice problems immediately after Tuesday class whenever possible. Redo missed problems without looking at the solution.</p></article>
+    </div>
+    <h3>Weekly outside-class targets</h3>
+    <div class="table-wrap"><table><thead><tr><th>Course</th><th>Aug. 24–Oct. 12</th><th>After Oct. 12</th><th>Main anchors</th></tr></thead><tbody>
+      <tr><td>BA 256 Accounting</td><td>6.5–7 hours</td><td>7 hours</td><td>Tuesday same-day practice, Thursday deep work, weekend retrieval</td></tr>
+      <tr><td>BA 103 Intro to Business</td><td>6 hours</td><td>Completed</td><td>Monday, Thursday, and weekend</td></tr>
+      <tr><td>BA 145 Computer Applications</td><td>4 hours</td><td>4 hours</td><td>Tuesday/Thursday project blocks</td></tr>
+      <tr><td>BA 207 Business Law</td><td>3.5–4 hours</td><td>4 hours</td><td>Same-day reviews plus Thursday/weekend retrieval</td></tr>
+    </tbody></table></div>
+  </section>
+
+  <section class="panel" id="panel-training" role="tabpanel">
+    <h2>Hybrid Training System</h2>
+    <p class="intro">Workdays count as lower-body stress. The generated week schedules four required sessions and adds a fifth only when the week has enough recovery room.</p>
+    <div class="grid two">
+      <article class="card"><h4>Heavy Full-Body • about 60 min</h4><ul><li>Warm-up: bike/elliptical, knee-to-wall rocks, calf raises, ramp-up sets</li><li>Bench press 4×4–6</li><li>T-bar row 4×6–8</li><li>Leg press 3×6–10</li><li>Hamstring curl 2–3×8–12</li><li>Back extension 3×10–15</li><li>Seated calf raise 3×8–12</li><li>Banded ankle eversion 2×15/side</li></ul><p class="helper">Keep about two reps in reserve on compounds and rest 2–3 minutes.</p></article>
+      <article class="card"><h4>Arms & Shoulders • about 60 min</h4><ul><li>Seated dumbbell shoulder press 3×6–10</li><li>Cable lateral raise 3×12–20</li><li>EZ-bar or cable curl 3×8–12</li><li>Rope pushdown 3×8–12</li><li>Hammer curl 2×10–15</li><li>Overhead cable extension 2×10–15</li><li>Rear-delt fly 2×12–20</li></ul></article>
+      <article class="card"><h4>Return-to-Running + Ankle Armor • 30–45 min</h4><p>Warm up with a brisk walk, ankle rocks, calf raises, and marching knee drives. Begin with the current run-walk stage and only progress after two successful sessions.</p><ul><li>No running on valet days</li><li>No consecutive running days</li><li>Flat surface only; no hills, sprints, or hard intervals</li><li>One run each week is enough during the first block</li></ul></article>
+      <article class="card"><h4>Nickels & Dimes + Hybrid Conditioning • about 45 min</h4><p>Keep this away from Heavy Day. It is automatically moved or removed when the workweek creates too much lower-body fatigue.</p></article>
+      <article class="card"><h4>Raises & Reverses</h4><p>This can be paired with Arms Day as a short finisher or used as the optional fifth session when the week is lighter.</p></article>
+      <article class="card"><h4>Ankle Armor • 5–7 short sessions</h4><ul><li>Knee-to-wall rocks 10/side</li><li>Straight-knee calf stretch 30 sec/side</li><li>Bent-knee calf stretch 30 sec/side</li><li>Slow calf raises 12 with a 3-second lowering</li><li>Single-leg balance 30 sec/side</li></ul><p class="helper">Minimum day: 10 ankle rocks and 10 calf raises.</p></article>
+    </div>
+    <div class="callout"><strong>Spacing rules:</strong> no Arms Day or Nickels & Dimes inside the 48 hours before Heavy Day. If work leaves you limping or unusually tight, replace the planned workout with mobility.</div>
+  </section>
+
+  <section class="panel" id="panel-sleep" role="tabpanel">
+    <h2>Planner Settings</h2>
+    <p class="intro">These values normally stay constant, so they no longer clutter Build My Week. Change them only when your routine or commute changes.</p>
+
+    <div class="grid four settings-grid">
+      <div class="field"><label for="studyLocation">Flexible study location</label><select id="studyLocation"><option value="auto">Auto: GRCC/library or coffee shop</option><option value="grcc">GRCC Library</option><option value="coffee">Local Grand Rapids coffee shop</option><option value="home">Home</option></select></div>
+      <div class="field"><label for="sleepTarget">Target sleep</label><select id="sleepTarget"><option value="8">8 hours</option><option value="7.5" selected>7.5 hours</option><option value="7">7 hours</option></select></div>
+      <div class="field"><label for="morningBuffer">Morning routine minimum</label><select id="morningBuffer"><option value="60" selected>1 hour</option><option value="75">1 hour 15 min</option><option value="90">1 hour 30 min</option></select></div>
+      <div class="field"><label for="youngLifeStart">Monday Young Life starts</label><input type="time" id="youngLifeStart" value="17:00"></div>
+      <div class="field"><label for="youngLifeEnd">Young Life protected through</label><input type="time" id="youngLifeEnd" value="21:00"></div>
+      <div class="field"><label for="schoolDrive">Home → GRCC drive</label><input type="number" id="schoolDrive" value="20" min="5" max="90"></div>
+      <div class="field"><label for="rushBuffer">Rush-hour addition</label><input type="number" id="rushBuffer" value="5" min="0" max="30"></div>
+      <div class="field"><label for="parkingBuffer">GRCC parking/walk buffer</label><input type="number" id="parkingBuffer" value="15" min="0" max="30"></div>
+      <div class="field"><label for="workDrive">Home → work drive</label><input type="number" id="workDrive" value="18" min="5" max="90"></div>
+      <div class="field"><label for="workBuffer">Work arrival buffer</label><input type="number" id="workBuffer" value="10" min="0" max="30"></div>
+      <div class="field"><label for="churchDrive">Church travel each way</label><input type="number" id="churchDrive" value="20" min="0" max="60"></div>
+      <div class="field"><label for="churchStart">Sunday church starts</label><input type="time" id="churchStart" value="11:00"></div>
+      <div class="field"><label for="churchEnd">Sunday church ends</label><input type="time" id="churchEnd" value="12:30"></div>
+    </div>
+    <div class="actions settings-save"><button class="btn primary" id="saveSettings" type="button">Save Planner Settings</button><button class="btn" id="resetSettings" type="button">Restore Current Defaults</button></div>
+    <div class="inline-status" id="settingsMessage" aria-live="polite"></div>
+
+    <h3>How the calculations work</h3>
+    <div class="grid two">
+      <article class="card"><h4>Wake-up calculation</h4><p>The planner prefers a 7:00 a.m. wake-up. Early work shifts move it earlier so the selected morning routine still fits before departure.</p></article>
+      <article class="card"><h4>Bedtime calculation</h4><p>Bedtime is based on the following morning's wake-up and your selected 7–8 hour sleep target. A warning appears when a late commitment makes fewer than seven hours likely.</p></article>
+      <article class="card"><h4>GRCC commute</h4><p>Current default: 20-minute drive + 5-minute rush addition + 15 minutes for parking and walking.</p></article>
+      <article class="card"><h4>Work and gym</h4><p>Current default: 18 minutes home to work plus a 10-minute arrival buffer. The gym is treated as 15 minutes from home and 10 minutes from GRCC or work.</p></article>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-checklist" role="tabpanel">
+    <h2>Weekly Checklist</h2>
+    <p class="intro">The boxes save separately for each Monday-starting week in this browser.</p>
+    <div class="checklist" id="checklistItems"></div>
+    <div class="actions"><button class="btn" id="resetChecklist" type="button">Reset This Week's Checklist</button></div>
+  </section>
+
+  <section class="panel" id="panel-backup" role="tabpanel">
+    <h2>Backup Rules & Data</h2>
+    <div class="grid two">
+      <article class="card"><h4>If the manager schedule is difficult</h4><ul><li>Protect class and sleep first.</li><li>Keep Accounting's Tuesday same-day review whenever possible.</li><li>Reduce the optional fifth workout before removing a required session.</li><li>Move social time to the largest remaining opening instead of forcing a specific night.</li></ul></article>
+      <article class="card"><h4>If fatigue is high</h4><ul><li><strong>Green:</strong> complete the workout as planned.</li><li><strong>Yellow:</strong> remove one set or perform mobility only.</li><li><strong>Red:</strong> do not run or train the painful area.</li><li>Never combine missed workouts to “make up” the week.</li></ul></article>
+      <article class="card"><h4>If schoolwork expands</h4><ul><li>Assignments due within 48 hours take priority over generic study blocks.</li><li>Shorten the optional workout before shortening sleep.</li><li>Use GRCC or a nearby coffee shop after class to avoid unnecessary driving.</li><li>Ask the professor for help within 48 hours of identifying a persistent problem.</li></ul></article>
+      <article class="card"><h4>After BA 103 ends Oct. 12</h4><p>The generator automatically removes its recurring study target. Use the reclaimed hours for Accounting, Business Law, larger Computer Applications projects, recovery, or social time—not an automatic fourth workday.</p></article>
+    </div>
+
+    <h3>Save or move your planner data</h3>
+    <p class="intro">Inputs, assignments, and checklists save in this browser. Export a backup before moving the file to another phone or computer.</p>
+    <div class="actions"><button class="btn" id="exportData" type="button">Export Backup</button><label class="btn" for="importData">Import Backup</label><input class="hidden" type="file" id="importData" accept="application/json"><button class="btn danger" id="eraseData" type="button">Erase Saved Data</button></div>
+    <div id="dataMessage" aria-live="polite"></div>
+  </section>
+</div>
+<p class="footer">Drew's GRCC Fall 2026 Dynamic Planner v4 • Weekly work schedules save separately by week when browser storage is available.</p>
+
+<script>
+
+(function(){
+  'use strict';
+
+  /* Compatibility layer for iPhone WebKit/Quick Look variants. */
+  if(!Object.assign){Object.assign=function(target){if(target==null)throw new TypeError('Cannot convert undefined or null to object');var to=Object(target);for(var i=1;i<arguments.length;i++){var next=arguments[i];if(next!=null){for(var key in next){if(Object.prototype.hasOwnProperty.call(next,key))to[key]=next[key];}}}return to;};}
+  if(!String.prototype.padStart){String.prototype.padStart=function(len,fill){var str=String(this);fill=fill===undefined?' ':String(fill);while(str.length<len)str=fill+str;return str.slice(-len);};}
+  if(window.NodeList&&!NodeList.prototype.forEach){NodeList.prototype.forEach=Array.prototype.forEach;}
+  if(window.HTMLCollection&&!HTMLCollection.prototype.forEach){HTMLCollection.prototype.forEach=Array.prototype.forEach;}
+  if(window.Element&&!Element.prototype.closest){Element.prototype.closest=function(selector){var el=this;while(el&&el.nodeType===1){if(el.matches?el.matches(selector):el.msMatchesSelector(selector))return el;el=el.parentElement||el.parentNode;}return null;};}
+
+  function reportFatal(error){
+    try{
+      var box=document.getElementById('runtimeError');
+      if(box){box.className='callout danger';box.innerHTML='<strong>Planner control error:</strong> '+String(error&&error.message?error.message:error)+'. Reload this version in Safari. If the orange status above never changes, the file preview is blocking JavaScript.';}
+      var title=document.getElementById('appStatusTitle');if(title)title.textContent='Planner controls were blocked';
+      var text=document.getElementById('appStatusText');if(text)text.textContent='A browser or preview restriction stopped initialization. The error is shown below.';
+    }catch(ignore){}
+  }
+  window.onerror=function(message,source,line,column,error){reportFatal(error||message);return false;};
+
+  var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  var SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var SHIFT_LABELS = {
+    'off':'Off','07:00-15:00':'7–3','08:00-16:00':'8–4','09:00-17:00':'9–5',
+    '10:00-18:00':'10–6','11:00-19:00':'11–7','12:00-20:00':'12–8','custom':'Custom'
+  };
+  var STORAGE_KEY = 'drews-grcc-fall-2026-planner-v4';
+  var LEGACY_KEYS = ['drews-grcc-fall-2026-planner-v3','drews-grcc-fall-2026-planner-v2'];
+  var checklistLabels = [
+    'Entered the new valet schedule and rebuilt the week',
+    'Completed Tuesday Accounting same-day practice',
+    'Finished BA 103 work early in the week while the course is active',
+    'Practiced BA 145 tasks inside the actual software',
+    'Reviewed Business Law notes after both class meetings',
+    'No assignment due within 24 hours is unfinished',
+    'Completed Heavy Full-Body',
+    'Completed Arms & Shoulders',
+    'Completed Return-to-Running without pain',
+    'Completed Nickels & Dimes / hybrid conditioning',
+    'Used Ankle Armor at least five days',
+    'Protected at least seven hours of sleep each night',
+    'Used the largest open block for family, friends, girlfriend, or recovery',
+    'Planned the next week on Sunday'
+  ];
+
+  function settingsDefaults(){
+    return {sleepTarget:'7.5',morningBuffer:'60',youngLifeStart:'17:00',youngLifeEnd:'21:00',schoolDrive:'20',rushBuffer:'5',parkingBuffer:'15',workDrive:'18',workBuffer:'10',churchDrive:'20',churchStart:'11:00',churchEnd:'12:30',studyLocation:'auto'};
+  }
+  function defaultShifts(){ return ['off','off','off','off','off','off','off']; }
+  function defaultCustom(){ return DAYS.map(function(){return {start:'07:00',end:'15:00'};}); }
+  function mondayISO(date){
+    var d = new Date(date);
+    if (isNaN(d.getTime())) d = new Date();
+    d.setHours(12,0,0,0);
+    var day = (d.getDay()+6)%7;
+    d.setDate(d.getDate()-day);
+    return d.toISOString().slice(0,10);
+  }
+  function defaultState(){
+    var week = mondayISO(new Date());
+    var schedules = {};
+    schedules[week] = {shifts:defaultShifts(),custom:defaultCustom()};
+    return {weekStart:week,schedules:schedules,settings:settingsDefaults(),assignments:[],checklists:{}};
+  }
+  function storageGet(key){ try{return window.localStorage ? window.localStorage.getItem(key) : null;}catch(e){return null;} }
+  function storageSet(key,value){ try{if(window.localStorage){window.localStorage.setItem(key,value);return true;}}catch(e){} return false; }
+  function storageRemove(key){ try{if(window.localStorage)window.localStorage.removeItem(key);}catch(e){} }
+  function normalizeState(raw){
+    var base=defaultState(), data=raw||{};
+    base.weekStart=data.weekStart||base.weekStart;
+    base.settings=Object.assign(settingsDefaults(),data.settings||{});
+    base.assignments=Array.isArray(data.assignments)?data.assignments:[];
+    base.checklists=data.checklists&&typeof data.checklists==='object'?data.checklists:{};
+    base.schedules=data.schedules&&typeof data.schedules==='object'?data.schedules:{};
+    if(Array.isArray(data.shifts)) base.schedules[base.weekStart]={shifts:data.shifts,custom:Array.isArray(data.custom)?data.custom:defaultCustom()};
+    ensureWeekSchedule(base,base.weekStart);
+    return base;
+  }
+  function loadState(){
+    var raw=storageGet(STORAGE_KEY);
+    if(!raw){
+      for(var i=0;i<LEGACY_KEYS.length;i++){raw=storageGet(LEGACY_KEYS[i]);if(raw)break;}
+    }
+    if(!raw)return defaultState();
+    try{return normalizeState(JSON.parse(raw));}catch(e){return defaultState();}
+  }
+  function saveState(){return storageSet(STORAGE_KEY,JSON.stringify(state));}
+  function ensureWeekSchedule(target,week){
+    if(!target.schedules)target.schedules={};
+    if(!target.schedules[week])target.schedules[week]={shifts:defaultShifts(),custom:defaultCustom()};
+    var ws=target.schedules[week];
+    if(!Array.isArray(ws.shifts)||ws.shifts.length!==7)ws.shifts=defaultShifts();
+    if(!Array.isArray(ws.custom)||ws.custom.length!==7)ws.custom=defaultCustom();
+    for(var i=0;i<7;i++){
+      if(!ws.custom[i])ws.custom[i]={start:'07:00',end:'15:00'};
+      if(!SHIFT_LABELS.hasOwnProperty(ws.shifts[i]))ws.shifts[i]='off';
+    }
+    return ws;
+  }
+
+  var state=loadState();
+  var generated=null;
+
+  function byId(id){return document.getElementById(id);}
+  function val(id){var el=byId(id);return el?el.value:'';}
+  function num(value){return Number(value)||0;}
+  function minutes(t){if(!t)return 0;var parts=t.split(':');return num(parts[0])*60+num(parts[1]);}
+  function timeString(min){min=((Math.round(min)%1440)+1440)%1440;var h=Math.floor(min/60),m=min%60,ap=h>=12?'p.m.':'a.m.';return (h%12||12)+':'+String(m).padStart(2,'0')+' '+ap;}
+  function compactTime(min){min=((Math.round(min)%1440)+1440)%1440;var h=Math.floor(min/60),m=min%60;return (h%12||12)+':'+String(m).padStart(2,'0');}
+  function escapeHTML(s){return String(s==null?'':s).replace(/[&<>'"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c];});}
+  function dateAt(startISO,dayIndex){var d=new Date(startISO+'T12:00:00');d.setDate(d.getDate()+dayIndex);return d;}
+  function niceDate(d){return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+  function setMessage(id,text,type){var el=byId(id);if(!el)return;el.textContent=text||'';el.className='inline-status'+(type?' '+type:'');}
+  function selectedSchedule(){return ensureWeekSchedule(state,state.weekStart);}
+
+  function setCustomState(i){
+    var select=byId('shift-'+i),wrap=byId('custom-'+i),start=byId('custom-start-'+i),end=byId('custom-end-'+i);
+    if(!select||!wrap||!start||!end)return;
+    var active=select.value==='custom';
+    wrap.classList.toggle('is-inactive',!active);
+    start.disabled=!active; end.disabled=!active;
+  }
+  function applyWeekScheduleToControls(){
+    var ws=selectedSchedule();
+    for(var i=0;i<7;i++){
+      var shift=byId('shift-'+i),start=byId('custom-start-'+i),end=byId('custom-end-'+i);
+      if(shift)shift.value=ws.shifts[i];
+      if(start)start.value=ws.custom[i].start;
+      if(end)end.value=ws.custom[i].end;
+      setCustomState(i);
+    }
+    updateShiftSummary();
+  }
+  function readWeekScheduleFromControls(){
+    var ws=selectedSchedule();
+    for(var i=0;i<7;i++){
+      var shift=byId('shift-'+i),start=byId('custom-start-'+i),end=byId('custom-end-'+i);
+      if(shift)ws.shifts[i]=shift.value;
+      ws.custom[i]={start:start&&start.value?start.value:'07:00',end:end&&end.value?end.value:'15:00'};
+    }
+    saveState();
+    updateShiftSummary();
+  }
+  function updateShiftSummary(){
+    var ws=selectedSchedule(),count=0,total=0;
+    for(var i=0;i<7;i++){
+      if(ws.shifts[i]!=='off'){
+        var sh=getShift(i);if(sh){count++;total+=(sh.end-sh.start)/60;}
+      }
+    }
+    var wrap=byId('shiftSummary');
+    if(wrap)wrap.innerHTML='<span>'+count+' shift'+(count===1?'':'s')+'</span><span>'+total.toFixed(total%1?1:0)+' work hours</span>';
+  }
+  function applySettingsToControls(){
+    var s=state.settings;
+    Object.keys(s).forEach(function(k){var el=byId(k);if(el)el.value=s[k];});
+  }
+  function readSettingsFromControls(){
+    var keys=['sleepTarget','morningBuffer','youngLifeStart','youngLifeEnd','schoolDrive','rushBuffer','parkingBuffer','workDrive','workBuffer','churchDrive','churchStart','churchEnd','studyLocation'];
+    keys.forEach(function(k){if(byId(k))state.settings[k]=val(k);});
+    return saveState();
+  }
+  function setWeekFromInput(){
+    var raw=val('weekStart');
+    state.weekStart=mondayISO(raw?new Date(raw+'T12:00:00'):new Date());
+    ensureWeekSchedule(state,state.weekStart);
+    byId('weekStart').value=state.weekStart;
+    applyWeekScheduleToControls();
+    renderChecklist();
+    saveState();
+  }
+
+  function captureBuildInputs(){
+    var raw=val('weekStart');
+    var normalized=mondayISO(raw?new Date(raw+'T12:00:00'):new Date());
+    if(normalized!==state.weekStart){state.weekStart=normalized;ensureWeekSchedule(state,state.weekStart);}
+    byId('weekStart').value=state.weekStart;
+    readWeekScheduleFromControls();
+    readSettingsFromControls();
+  }
+
+  function getShift(i){
+    var ws=selectedSchedule(),v=ws.shifts[i];
+    if(v==='off')return null;
+    var raw=v==='custom'?(ws.custom[i].start+'-'+ws.custom[i].end):v;
+    var pair=raw.split('-'),start=minutes(pair[0]),end=minutes(pair[1]);
+    if(end<=start)end+=1440;
+    return {start:start,end:end,label:v==='custom'?(timeString(start)+'–'+timeString(end)):(SHIFT_LABELS[v]||raw)};
+  }
+  function event(start,end,title,type,note,location){return {start:start,end:end,title:title,type:type,note:note||'',location:location||''};}
+  function overlaps(events,start,end){return events.some(function(e){return start<e.end&&end>e.start;});}
+  function addEvent(events,e){events.push(e);events.sort(function(a,b){return a.start-b.start;});}
+  function findSlot(events,duration,earliest,latest,preferred,step){
+    var starts=[],t;step=step||15;
+    if(preferred!==null&&preferred!==undefined)starts.push(preferred);
+    for(t=earliest;t+duration<=latest;t+=step)if(starts.indexOf(t)<0)starts.push(t);
+    for(var i=0;i<starts.length;i++){t=starts[i];if(t<earliest||t+duration>latest)continue;if(!overlaps(events,t,t+duration))return t;}
+    return null;
+  }
+  function dayDate(i){return dateAt(state.weekStart,i);}
+  function inBA103Period(){return new Date(state.weekStart+'T12:00:00')<=new Date('2026-10-12T23:59:59');}
+
+  function baseWeek(){
+    var days=DAYS.map(function(name,i){return {name:name,date:dayDate(i),events:[],wake:420,bed:1410,workHours:0};});
+    var s=state.settings,schoolTravel=num(s.schoolDrive)+num(s.rushBuffer)+num(s.parkingBuffer),workTravel=num(s.workDrive)+num(s.workBuffer),churchTravel=num(s.churchDrive);
+    [[0,570,660,'BA 207 Business Law'],[2,570,660,'BA 207 Business Law'],[1,540,720,'BA 256 Accounting I']].forEach(function(item){
+      var d=item[0],st=item[1],en=item[2],title=item[3];
+      addEvent(days[d].events,event(st-schoolTravel,st,'Commute to GRCC','commute','Leave home by '+timeString(st-schoolTravel)+'.','travel'));
+      addEvent(days[d].events,event(st,en,title,'class',d===1?'Hybrid class in 237 RJF Hall.':'Class in 236 RJF Hall.','school'));
+    });
+    var ylStart=minutes(s.youngLifeStart),ylEnd=minutes(s.youngLifeEnd);
+    addEvent(days[0].events,event(Math.max(0,ylStart-30),ylEnd,'Young Life protected time','commitment','Includes preparation and travel buffer.','other'));
+    days.forEach(function(day,i){
+      var sh=getShift(i);if(!sh)return;
+      var pre=(i===2&&sh.start>=690)?20:workTravel;
+      addEvent(day.events,event(Math.max(0,sh.start-pre),sh.start,'Travel / arrive for work','commute',i===2&&sh.start>=690?'From GRCC or nearby study location.':'Home-to-work drive and arrival buffer.','travel'));
+      addEvent(day.events,event(sh.start,sh.end,'Valet shift '+sh.label,'work','Workdays count as lower-body stress.','work'));
+      addEvent(day.events,event(sh.end,Math.min(1440,sh.end+num(s.workDrive)+5),'Commute home','commute','','travel'));
+      day.workHours=(sh.end-sh.start)/60;
+    });
+    if(!getShift(6)){
+      var cs=minutes(s.churchStart),ce=minutes(s.churchEnd);
+      addEvent(days[6].events,event(cs-churchTravel,cs,'Travel to church','commute','','travel'));
+      addEvent(days[6].events,event(cs,ce,'Church','commitment','Sunday off commitment.','church'));
+      addEvent(days[6].events,event(ce,ce+churchTravel,'Travel from church','commute','','travel'));
+    }
+    days.forEach(function(day){
+      var earliest=day.events.length?Math.min.apply(null,day.events.map(function(e){return e.start;})):540;
+      day.wake=Math.min(420,Math.max(300,earliest-num(s.morningBuffer)));
+      addEvent(day.events,event(day.wake,Math.min(earliest,day.wake+num(s.morningBuffer)),'Morning routine','routine','Breakfast, shower, get ready, pack, and review the day.','home'));
+    });
+    return days;
+  }
+
+  function scheduleTraining(days,warnings){
+    var workouts=[];
+    function addWorkout(dayIndex,start,duration,title,note,required){addEvent(days[dayIndex].events,event(start,start+duration,title,'training',note,'gym'));workouts.push({dayIndex:dayIndex,start:start,duration:duration,title:title,required:required});}
+    function slotFor(dayIndex,duration,preferred,earliest,latest,nonWork){if(nonWork&&getShift(dayIndex))return null;return findSlot(days[dayIndex].events,duration,Math.max(days[dayIndex].wake+60,earliest),latest,preferred,15);}
+    var heavy=null,run=null,arms=null,nd=null,optional=null,i,c,st,diff,nextDiff;
+    var candidates=[[0,670],[3,780],[1,855],[4,960],[5,600],[6,840]];
+    for(i=0;i<candidates.length;i++){c=candidates[i];st=slotFor(c[0],70,c[1],570,1200,true);if(st!==null){heavy={d:c[0],st:st};break;}}
+    if(heavy)addWorkout(heavy.d,heavy.st,70,'Heavy Full-Body','About 60 minutes lifting plus transition time. Required.',true);else warnings.push({bad:true,text:'No safe non-work block was available for Heavy Full-Body.'});
+    candidates=[[1,900],[5,600],[6,840],[4,960],[3,960],[0,780]];
+    for(i=0;i<candidates.length;i++){c=candidates[i];st=slotFor(c[0],45,c[1],600,1170,true);if(st!==null&&(!heavy||c[0]!==heavy.d)){run={d:c[0],st:st};break;}}
+    if(run)addWorkout(run.d,run.st,45,'Return-to-Running + Ankle Armor','15–30 minute run/walk progression, warm-up, and ankle work. Required.',true);else warnings.push({bad:true,text:'No non-work day had room for the running session. Do not force it onto a valet day.'});
+    candidates=[[3,780],[4,960],[5,600],[6,840],[2,1260],[1,960]];
+    for(i=0;i<candidates.length;i++){c=candidates[i];st=slotFor(c[0],70,c[1],600,1260,false);if(st===null)continue;if(heavy){diff=(c[0]*1440+st)-(heavy.d*1440+heavy.st);nextDiff=((heavy.d+7)*1440+heavy.st)-(c[0]*1440+st);if(diff<2880||nextDiff<2880)continue;}arms={d:c[0],st:st};break;}
+    if(arms)addWorkout(arms.d,arms.st,70,'Arms & Shoulders + Raises & Reverses','About 60 minutes lifting with a short finisher. Required.',true);else warnings.push({bad:false,text:'Arms could not fit with ideal 48-hour spacing. Keep it short or use mobility only.'});
+    candidates=[[4,960],[5,600],[3,960],[6,840],[2,1260]];
+    for(i=0;i<candidates.length;i++){c=candidates[i];st=slotFor(c[0],45,c[1],600,1230,false);if(st===null)continue;if(heavy){diff=(c[0]*1440+st)-(heavy.d*1440+heavy.st);nextDiff=((heavy.d+7)*1440+heavy.st)-(c[0]*1440+st);if(diff<2880||nextDiff<2880)continue;}nd={d:c[0],st:st};break;}
+    if(nd)addWorkout(nd.d,nd.st,45,'Nickels & Dimes + Hybrid Conditioning','Required. Keep effort controlled when valet volume is high.',true);else warnings.push({bad:false,text:'Nickels & Dimes did not fit with ideal spacing. Replace it with Ankle Armor rather than combining sessions.'});
+    candidates=[[6,900],[5,900],[4,480],[3,1080]];
+    for(i=0;i<candidates.length;i++){c=candidates[i];st=slotFor(c[0],35,c[1],480,1200,true);if(st!==null&&!workouts.some(function(w){return w.dayIndex===c[0];})){optional={d:c[0],st:st};break;}}
+    if(optional)addWorkout(optional.d,optional.st,35,'Optional Recovery Session','Easy cardio, core, mobility, or Ankle Armor. Skip when tired or behind.',false);
+    return workouts;
+  }
+
+  function reserveSocial(days){
+    var windows=[];
+    days.forEach(function(day,d){var start=Math.max(day.wake+60,d>=5?780:1020),end=1320,t=start,sorted=day.events.slice().sort(function(a,b){return a.start-b.start;});sorted.forEach(function(e){if(e.end<=start||e.start>=end)return;if(e.start-t>=120)windows.push({d:d,start:t,end:e.start,len:e.start-t,weekend:d>=5});t=Math.max(t,e.end);});if(end-t>=120)windows.push({d:d,start:t,end:end,len:end-t,weekend:d>=5});});
+    var chosen=[],weekend=windows.filter(function(w){return w.weekend;}).sort(function(a,b){return b.len-a.len;})[0],weekday;
+    if(weekend)chosen.push(Object.assign({},weekend,{duration:Math.min(180,weekend.len)}));
+    weekday=windows.filter(function(w){return !w.weekend&&(!weekend||w.d!==weekend.d);}).sort(function(a,b){return b.len-a.len;})[0];
+    if(weekday)chosen.push(Object.assign({},weekday,{duration:Math.min(150,weekday.len)}));
+    chosen.forEach(function(w){addEvent(days[w.d].events,event(w.start,w.start+w.duration,'Open social / relationship / recovery time','social','Use for family, friends, girlfriend, or simply recovering.','flex'));});
+    return chosen;
+  }
+  function getAssignmentsForWeek(){var start=new Date(state.weekStart+'T00:00:00'),horizon=new Date(start);horizon.setDate(horizon.getDate()+9);return state.assignments.filter(function(a){var d=new Date(a.due);return d>=start&&d<=horizon;}).sort(function(a,b){return new Date(a.due)-new Date(b.due);});}
+  function courseKey(course){if(course.indexOf('103')>=0)return'BA103';if(course.indexOf('145')>=0)return'BA145';if(course.indexOf('207')>=0)return'BA207';return'BA256';}
+  function studyLocation(dayIndex,start){var mode=state.settings.studyLocation;if(mode==='grcc')return'GRCC Library';if(mode==='coffee')return'Local GR coffee shop';if(mode==='home')return'Home';if([0,1,2].indexOf(dayIndex)>=0&&start>=660&&start<=1020)return'GRCC Library or nearby coffee shop';return'Home or local GR coffee shop';}
+  function scheduleStudy(days,warnings){
+    var active103=inBA103Period(),targets={BA256:420,BA103:active103?360:0,BA145:240,BA207:240},assignments=getAssignmentsForWeek(),assignedByCourse={BA256:0,BA103:0,BA145:0,BA207:0},tasks=[];
+    assignments.forEach(function(a){var key=courseKey(a.course),remaining=Number(a.minutes),part=1;assignedByCourse[key]+=remaining;while(remaining>0){var dur=Math.min(90,remaining);tasks.push({title:a.title+(Number(a.minutes)>90?' — part '+part:''),course:a.course,key:key,duration:dur,due:new Date(a.due),priority:a.priority==='high'?0:a.priority==='normal'?1:2,assignment:true,notes:a.notes||''});remaining-=dur;part++;}});
+    var prefs={BA256:[1,3,6,4,5,0,2],BA103:[0,3,5,6,4,1,2],BA145:[1,3,4,6,5,0,2],BA207:[0,2,3,6,4,5,1]};
+    Object.keys(targets).forEach(function(key){var remaining=Math.max(0,targets[key]-assignedByCourse[key]),part=1,label={BA256:'Accounting practice',BA103:'BA 103 module / retrieval',BA145:'Computer Applications practice',BA207:'Business Law review'}[key];while(remaining>0){var dur=Math.min(key==='BA207'?60:90,remaining);tasks.push({title:label+(part>1?' '+part:''),course:key,key:key,duration:dur,due:null,priority:key==='BA256'?1:2,assignment:false,notes:''});remaining-=dur;part++;}});
+    tasks.push({title:'Tuesday Accounting same-day review',course:'BA 256 Accounting I',key:'BA256',duration:120,due:null,priority:-2,assignment:false,anchor:true,preferred:[1]});
+    tasks.push({title:'Monday Business Law same-day review',course:'BA 207 Business Law',key:'BA207',duration:30,due:null,priority:-1,assignment:false,anchor:true,preferred:[0]});
+    tasks.push({title:'Wednesday Business Law same-day review',course:'BA 207 Business Law',key:'BA207',duration:30,due:null,priority:-1,assignment:false,anchor:true,preferred:[2]});
+    var offsets={BA256:120,BA207:60};Object.keys(offsets).forEach(function(key){var remove=offsets[key];for(var i=tasks.length-4;i>=0&&remove>0;i--){var t=tasks[i];if(!t.assignment&&!t.anchor&&t.key===key){var cut=Math.min(remove,t.duration);t.duration-=cut;remove-=cut;}}});
+    var clean=tasks.filter(function(t){return t.duration>0;});clean.sort(function(a,b){var ad=a.due?a.due.getTime():Infinity,bd=b.due?b.due.getTime():Infinity;return a.priority-b.priority||ad-bd;});
+    var scheduledMinutes=0,unscheduled=[];
+    clean.forEach(function(task){var prefDays=task.preferred||prefs[task.key],placed=null;for(var i=0;i<prefDays.length;i++){var d=prefDays[i],date=dayDate(d);if(task.due&&date>task.due)continue;var earliest=Math.max(days[d].wake+60,480),latest=1260,preferred=null;if(task.anchor&&d===1){earliest=750;latest=1020;preferred=750;}if(task.anchor&&d===0){earliest=660;latest=990;preferred=780;}if(task.anchor&&d===2){earliest=660;latest=960;preferred=660;}var st=findSlot(days[d].events,task.duration,earliest,latest,preferred,15);if(st!==null){placed={d:d,st:st};break;}}if(!placed){for(var d2=0;d2<7;d2++){var date2=dayDate(d2);if(task.due&&date2>task.due)continue;var st2=findSlot(days[d2].events,task.duration,Math.max(days[d2].wake+60,480),1260,null,15);if(st2!==null){placed={d:d2,st:st2};break;}}}if(placed){var dueNote=task.due?'Due '+task.due.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'. ':'';addEvent(days[placed.d].events,event(placed.st,placed.st+task.duration,task.title,'study',dueNote+task.notes+(task.notes?' • ':'')+studyLocation(placed.d,placed.st)+'.','study'));scheduledMinutes+=task.duration;}else unscheduled.push(task);});
+    if(unscheduled.length)warnings.push({bad:true,text:unscheduled.length+' study block'+(unscheduled.length===1?'':'s')+' could not fit. Reduce optional activity, request a work adjustment, or split the work.'});
+    return {scheduledMinutes:scheduledMinutes,unscheduled:unscheduled,assignments:assignments};
+  }
+  function scheduleWeeklyReset(days){var st=findSlot(days[6].events,45,480,1260,990,15);if(st!==null)addEvent(days[6].events,event(st,st+45,'Weekly reset','planning','Check deadlines, prepare clothes/meals, and enter next work schedule.','home'));}
+  function finishSleep(days,warnings){var target=num(state.settings.sleepTarget)*60;days.forEach(function(day,i){var nextWake=days[(i+1)%7].wake,bed=nextWake-target;if(bed<0)bed+=1440;var ends=day.events.map(function(e){return e.end;}),lastEnd=ends.length?Math.max.apply(null,ends):0,possible=(nextWake+1440)-lastEnd;day.bed=bed;day.possibleSleep=Math.min(target,possible);if(possible<420)warnings.push({bad:true,text:day.name+' may leave fewer than seven hours before '+DAYS[(i+1)%7]+'. Move or shorten the final block.'});addEvent(day.events,event(Math.max(lastEnd,bed),Math.max(lastEnd,bed)+15,'Wind-down / bedtime','sleep','Target: in bed around '+timeString(bed)+' for '+state.settings.sleepTarget+' hours before '+DAYS[(i+1)%7]+'.','home'));});}
+  function conflictWarnings(warnings){var sh;if(getShift(0)){sh=getShift(0);if(sh.start<660&&sh.end>570)warnings.push({bad:true,text:'Monday work overlaps Business Law.'});if(sh.end>minutes(state.settings.youngLifeStart)-30)warnings.push({bad:true,text:'Monday work overlaps the protected Young Life window.'});}if(getShift(1)){sh=getShift(1);if(sh.start<720&&sh.end>540)warnings.push({bad:true,text:'Tuesday work overlaps Accounting class.'});}if(getShift(2)){sh=getShift(2);if(sh.start<660&&sh.end>570)warnings.push({bad:true,text:'Wednesday work overlaps Business Law. Your preferred 12–8 shift does not conflict.'});}if(getShift(6)){sh=getShift(6);if(sh.start>=660||sh.end>660)warnings.push({bad:false,text:'Sunday work replaces church in this generated week, matching the every-other-Sunday plan.'});}}
+
+  function buildPlan(){
+    try{
+      captureBuildInputs();
+      setMessage('buildMessage','Building your week…','');
+      var warnings=[],days=baseWeek();conflictWarnings(warnings);var workouts=scheduleTraining(days,warnings);reserveSocial(days);var study=scheduleStudy(days,warnings);scheduleWeeklyReset(days);finishSleep(days,warnings);
+      generated={days:days,warnings:warnings,workouts:workouts,study:study,builtAt:new Date().toISOString()};
+      renderGenerated();renderChecklist();setMessage('buildMessage','Week built successfully. Opening Generated Week…','good');switchPanel('week',true);
+    }catch(error){console.error(error);setMessage('buildMessage','The week could not be built. Reload in Safari and try again. Technical detail: '+(error&&error.message?error.message:'unknown error'),'bad');}
+  }
+  function renderGenerated(){
+    if(!generated){byId('scheduleOutput').innerHTML='<div class="empty">Enter your work schedule in Build My Week, then press the build button.</div>';byId('weekMetrics').innerHTML='';byId('weekWarnings').innerHTML='';return;}
+    var workHours=generated.days.reduce(function(a,d){return a+d.workHours;},0),studyHours=generated.study.scheduledMinutes/60,required=generated.workouts.filter(function(w){return w.required;}).length,avgSleep=generated.days.reduce(function(a,d){return a+(d.possibleSleep||0);},0)/7/60;
+    byId('weekMetrics').innerHTML=[['Work',workHours.toFixed(workHours%1?1:0)+' hrs'],['Study scheduled',studyHours.toFixed(1)+' hrs'],['Required workouts',required+'/4'],['Projected sleep',avgSleep.toFixed(1)+' hrs']].map(function(item){return '<div class="metric"><strong>'+item[1]+'</strong><span>'+item[0]+'</span></div>';}).join('');
+    byId('weekWarnings').innerHTML=generated.warnings.length?'<div class="warning-list">'+generated.warnings.map(function(w){return '<div class="warning '+(w.bad?'bad':'')+'">'+escapeHTML(w.text)+'</div>';}).join('')+'</div>':'<div class="callout good"><strong>Week looks balanced:</strong> no major rule conflicts were detected.</div>';
+    byId('scheduleOutput').innerHTML=generated.days.map(function(day){var events=day.events.slice().sort(function(a,b){return a.start-b.start;});return '<article class="schedule-day"><div class="day-head"><div><h3>'+day.name+'</h3><div class="helper">'+niceDate(day.date)+'</div></div><div class="day-meta">Wake '+timeString(day.wake)+'<br>'+(day.workHours?day.workHours.toFixed(day.workHours%1?1:0)+' work hrs':'No valet shift')+'</div></div><ul class="timeline">'+events.map(function(e){return '<li><time>'+compactTime(e.start)+'–'+compactTime(e.end)+'</time><div><span class="event-title">'+escapeHTML(e.title)+'</span><span class="tag '+escapeHTML(e.type)+'">'+escapeHTML(e.type)+'</span>'+(e.note?'<span class="event-note">'+escapeHTML(e.note)+'</span>':'')+'</div></li>';}).join('')+'</ul></article>';}).join('');
+  }
+  function renderAssignments(){var list=byId('assignmentList');if(!state.assignments.length){list.innerHTML='<div class="empty">No assignments added yet. Recurring course study targets will still generate.</div>';return;}var sorted=state.assignments.slice().sort(function(a,b){return new Date(a.due)-new Date(b.due);});list.innerHTML=sorted.map(function(a){return '<div class="assignment-row"><div class="wide"><div class="assignment-title">'+escapeHTML(a.title)+'</div><div class="assignment-meta">'+escapeHTML(a.course)+(a.notes?' • '+escapeHTML(a.notes):'')+'</div></div><div><label>Due</label><div>'+new Date(a.due).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div></div><div><label>Estimate</label><div>'+a.minutes+' min</div></div><div><label>Priority</label><div>'+escapeHTML(a.priority)+'</div></div><button class="btn danger small" data-delete-assignment="'+a.id+'" type="button">Delete</button></div>';}).join('');}
+  function checklistKey(){return state.weekStart;}
+  function renderChecklist(){var values=state.checklists[checklistKey()]||{},wrap=byId('checklistItems');wrap.innerHTML=checklistLabels.map(function(l,i){return '<label class="check"><input type="checkbox" data-check="'+i+'" '+(values[i]?'checked':'')+'><span>'+escapeHTML(l)+'</span></label>';}).join('');}
+  function switchPanel(name,scroll){var radio=byId('tab-'+name);if(!radio)return;radio.checked=true;document.querySelectorAll('.tab').forEach(function(t){t.setAttribute('aria-selected',t.getAttribute('data-panel')===name?'true':'false');});try{history.replaceState(null,'','#'+name);}catch(e){}if(scroll){try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}}}
+  function setTemplate(values){var ws=selectedSchedule();ws.shifts=values.slice();ws.custom=defaultCustom();applyWeekScheduleToControls();saveState();setMessage('buildMessage','Template loaded. Adjust any day, then build the week.','good');}
+  function addAssignment(){var title=val('assignmentTitle').trim(),due=val('assignmentDue');if(!title||!due){setMessage('assignmentMessage','Add an assignment name and due date.','bad');return;}state.assignments.push({id:'a-'+Date.now(),course:val('assignmentCourse'),title:title,due:due,minutes:Number(val('assignmentMinutes')),priority:val('assignmentPriority'),notes:val('assignmentNotes').trim()});saveState();renderAssignments();byId('assignmentTitle').value='';byId('assignmentNotes').value='';setMessage('assignmentMessage','Assignment added and included in future builds.','good');}
+  function exportData(){readWeekScheduleFromControls();readSettingsFromControls();var text=JSON.stringify(state,null,2),filename='drews-planner-backup-'+state.weekStart+'.json';try{var blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);byId('dataMessage').innerHTML='<div class="callout good">Backup export started. Check Safari downloads or the Files app.</div>';}catch(e){byId('dataMessage').innerHTML='<div class="callout danger">Export was blocked in this viewer. Open the planner in Safari and try again.</div>';}}
+  function importDataFile(file){var reader=new FileReader();reader.onload=function(){try{state=normalizeState(JSON.parse(reader.result));saveState();byId('weekStart').value=state.weekStart;applySettingsToControls();applyWeekScheduleToControls();renderAssignments();renderChecklist();generated=null;renderGenerated();byId('dataMessage').innerHTML='<div class="callout good">Backup imported successfully.</div>';}catch(e){byId('dataMessage').innerHTML='<div class="callout danger">That file could not be imported.</div>';}};reader.readAsText(file);}
+
+  function listen(el,eventName,handler){
+    if(!el)return;
+    if(el.addEventListener)el.addEventListener(eventName,handler,false);
+    else if(el.attachEvent)el.attachEvent('on'+eventName,handler);
+    else el['on'+eventName]=handler;
+  }
+  function bindTap(el,handler){
+    if(!el)return;
+    var lastTouch=0;
+    listen(el,'touchend',function(e){lastTouch=Date.now();if(e&&e.preventDefault)e.preventDefault();handler(e||window.event);});
+    listen(el,'click',function(e){if(Date.now()-lastTouch<700)return;handler(e||window.event);});
+  }
+  function bind(){
+    var tabs=document.querySelectorAll('.tab'),radios=document.querySelectorAll('.tab-radio'),i;
+    for(i=0;i<tabs.length;i++)(function(t){
+      bindTap(t,function(){switchPanel(t.getAttribute('data-panel'),false);});
+      listen(t,'keydown',function(e){e=e||window.event;var key=e.key||e.keyCode;if(key==='Enter'||key===' '||key===13||key===32){if(e.preventDefault)e.preventDefault();switchPanel(t.getAttribute('data-panel'),true);}});
+    })(tabs[i]);
+    for(i=0;i<radios.length;i++)(function(r){listen(r,'change',function(){if(r.checked)switchPanel(r.id.replace('tab-',''),false);});})(radios[i]);
+    for(i=0;i<7;i++)(function(index){
+      var shift=byId('shift-'+index),start=byId('custom-start-'+index),end=byId('custom-end-'+index);
+      listen(shift,'change',function(){setCustomState(index);readWeekScheduleFromControls();});
+      listen(start,'change',readWeekScheduleFromControls);listen(end,'change',readWeekScheduleFromControls);
+      listen(start,'input',readWeekScheduleFromControls);listen(end,'input',readWeekScheduleFromControls);
+    })(i);
+    listen(byId('weekStart'),'change',function(){setWeekFromInput();setMessage('buildMessage','Loaded saved shifts for the selected week.','good');});
+    bindTap(byId('templateSundayWork'),function(){setTemplate(['off','off','12:00-20:00','off','07:00-15:00','off','07:00-15:00']);});
+    bindTap(byId('templateSundayOff'),function(){setTemplate(['off','off','12:00-20:00','off','07:00-15:00','07:00-15:00','off']);});
+    bindTap(byId('clearShifts'),function(){setTemplate(['off','off','off','off','off','off','off']);setMessage('buildMessage','Every day is now set to Off.','good');});
+    bindTap(byId('buildWeek'),function(){var b=byId('buildWeek');if(b)b.setAttribute('aria-busy','true');buildPlan();setTimeout(function(){if(b)b.removeAttribute('aria-busy');},120);});
+    bindTap(byId('rebuildWeek'),buildPlan);
+    bindTap(byId('saveSettings'),function(){var ok=readSettingsFromControls();setMessage('settingsMessage',ok?'Planner settings saved.':'Settings are active for this session, but this browser blocked permanent storage.',ok?'good':'bad');});
+    bindTap(byId('resetSettings'),function(){state.settings=settingsDefaults();applySettingsToControls();saveState();setMessage('settingsMessage','Current commute, church, Young Life, and sleep defaults restored.','good');});
+    bindTap(byId('printWeek'),function(){window.print();});
+    bindTap(byId('addAssignment'),addAssignment);
+    listen(byId('assignmentTitle'),'keydown',function(e){e=e||window.event;var key=e.key||e.keyCode;if(key==='Enter'||key===13){if(e.preventDefault)e.preventDefault();addAssignment();}});
+    listen(byId('assignmentList'),'click',function(e){e=e||window.event;var target=e.target||e.srcElement,btn=target&&target.closest?target.closest('[data-delete-assignment]'):null;if(!btn)return;state.assignments=state.assignments.filter(function(a){return a.id!==btn.getAttribute('data-delete-assignment');});saveState();renderAssignments();setMessage('assignmentMessage','Assignment deleted.','good');});
+    listen(byId('checklistItems'),'change',function(e){e=e||window.event;var target=e.target||e.srcElement;if(!target||!target.getAttribute('data-check'))return;var key=checklistKey();if(!state.checklists[key])state.checklists[key]={};state.checklists[key][target.getAttribute('data-check')]=target.checked;saveState();});
+    bindTap(byId('resetChecklist'),function(){state.checklists[checklistKey()]={};saveState();renderChecklist();});
+    bindTap(byId('exportData'),exportData);
+    listen(byId('importData'),'change',function(e){e=e||window.event;var target=e.target||e.srcElement;if(target&&target.files&&target.files[0])importDataFile(target.files[0]);});
+    bindTap(byId('eraseData'),function(){if(window.confirm('Erase all saved weekly shifts, assignments, settings, and checklists?')){storageRemove(STORAGE_KEY);state=defaultState();generated=null;byId('weekStart').value=state.weekStart;applySettingsToControls();applyWeekScheduleToControls();renderAssignments();renderChecklist();renderGenerated();byId('dataMessage').innerHTML='<div class="callout good">Saved planner data erased.</div>';}});
+  }
+
+  function init(){
+    var assignmentPanel=byId('panel-assignments');if(assignmentPanel&&!byId('assignmentMessage')){var m=document.createElement('div');m.id='assignmentMessage';m.className='inline-status';m.setAttribute('aria-live','polite');assignmentPanel.insertBefore(m,byId('assignmentList'));}
+    document.documentElement.className+=(document.documentElement.className?' ':'')+'js-ready';
+    byId('appStatusTitle').textContent='Planner controls are active';
+    byId('appStatusText').textContent='Touch controls, buttons, saving, assignments, and weekly generation initialized successfully.';
+    byId('weekStart').value=state.weekStart;
+    applySettingsToControls();applyWeekScheduleToControls();renderAssignments();renderChecklist();renderGenerated();bind();
+    var initial=(location.hash||'').replace('#',''),valid=['build','week','assignments','courses','training','sleep','checklist','backup'];switchPanel(valid.indexOf(initial)>=0?initial:'build',false);
+  }
+  function startPlanner(){try{init();}catch(error){reportFatal(error);}}
+  if(document.readyState==='loading')listen(document,'DOMContentLoaded',startPlanner);else startPlanner();
+})();
+
+</script>
+</body>
+</html>
