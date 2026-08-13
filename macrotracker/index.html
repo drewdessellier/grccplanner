@@ -818,12 +818,23 @@
         if (!isMixed && !isLowConfidence) return firstPass;
 
         // Ambiguous plate: run three estimates and take the median to damp outliers.
+        // The refinements are a bonus — if they fail, the first estimate still stands,
+        // so a busy server can't throw away an analysis we already have.
         state.uploadPhase = 'Refining estimate via consensus...';
         render();
-        return Promise.all([analyze(parts, signal), analyze(parts, signal)]).then(function (rest) {
-          var results = [firstPass, rest[0], rest[1]].sort(function (a, b) {
-            return a.totalCalories - b.totalCalories;
+        var tolerate = function (p) {
+          return p.catch(function (err) {
+            if (err && err.name === 'AbortError') throw err;
+            return null;
           });
+        };
+        return Promise.all([
+          tolerate(analyze(parts, signal)),
+          tolerate(analyze(parts, signal))
+        ]).then(function (rest) {
+          var results = [firstPass].concat(rest.filter(Boolean));
+          if (results.length < 3) return firstPass;
+          results.sort(function (a, b) { return a.totalCalories - b.totalCalories; });
           var median = results[1];
           median.assumptions = (median.assumptions || []).concat(
             'System note: Used median of 3 parallel estimations due to visual ambiguity.'
@@ -871,6 +882,59 @@
     });
   }
 
+  // Gemini returns 503 whenever the model is momentarily overloaded, and phone connections
+  // drop requests, so transient failures are routine rather than exceptional. Retry them
+  // with backoff before bothering the user.
+  var RETRY_STATUSES = { 429: 1, 500: 1, 502: 1, 503: 1, 504: 1 };
+  var MAX_ATTEMPTS = 4;
+
+  function sleep(ms, signal) {
+    return new Promise(function (resolve, reject) {
+      function cleanup() {
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener('abort', onAbort);
+      }
+      function onAbort() {
+        cleanup();
+        var err = new Error('Aborted');
+        err.name = 'AbortError';
+        reject(err);
+      }
+      var timer = setTimeout(function () { cleanup(); resolve(); }, ms);
+      if (signal) {
+        if (signal.aborted) { onAbort(); return; }
+        signal.addEventListener('abort', onAbort);
+      }
+    });
+  }
+
+  function backoff(attempt, signal, reason) {
+    var wait = Math.round(Math.pow(2, attempt - 1) * 900 + Math.random() * 400);
+    state.uploadPhase = reason + ' Retrying in ' + Math.round(wait / 1000) + 's...';
+    render();
+    return sleep(wait, signal);
+  }
+
+  function fetchWithRetry(url, options, attempt) {
+    attempt = attempt || 1;
+    return fetch(url, options).then(function (res) {
+      if (RETRY_STATUSES[res.status] && attempt < MAX_ATTEMPTS) {
+        var reason = res.status === 429 ? 'Rate limited.' : 'Server busy.';
+        return backoff(attempt, options.signal, reason).then(function () {
+          return fetchWithRetry(url, options, attempt + 1);
+        });
+      }
+      return res;
+    }, function (err) {
+      // Network blips are worth one more try; a user cancellation is not.
+      if (err && err.name === 'AbortError') throw err;
+      if (attempt >= MAX_ATTEMPTS) throw err;
+      return backoff(attempt, options.signal, 'Connection dropped.').then(function () {
+        return fetchWithRetry(url, options, attempt + 1);
+      });
+    });
+  }
+
   // Model names get retired, and which ones a key can reach varies by account. Rather than
   // hardcode one, ask the API what this key can use and remember the choice.
   var API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -907,7 +971,7 @@
 
   function ensureModel(signal) {
     if (chosenModel && !badModels[chosenModel]) return Promise.resolve(chosenModel);
-    return fetch(API_BASE + '/models?pageSize=200', {
+    return fetchWithRetry(API_BASE + '/models?pageSize=200', {
       headers: { 'x-goog-api-key': state.apiKey },
       signal: signal
     }).then(function (res) {
@@ -996,7 +1060,7 @@
     };
 
     var url = API_BASE + '/models/' + model + ':generateContent';
-    return fetch(url, {
+    return fetchWithRetry(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.apiKey },
       body: JSON.stringify(payload),
@@ -1012,7 +1076,12 @@
         if (response.status === 400 || response.status === 403) {
           throw new Error('API rejected the request (' + response.status + '). Check your API key.');
         }
-        if (response.status === 429) throw new Error('Rate limited by the API. Try again in a moment.');
+        if (response.status === 429) {
+          throw new Error("You've hit the API's rate limit. Wait a minute, then try again.");
+        }
+        if (RETRY_STATUSES[response.status]) {
+          throw new Error("Google's servers are busy right now. Try again in a moment.");
+        }
         throw new Error('API Error: ' + response.status);
       }
       return response.json();
