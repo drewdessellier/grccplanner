@@ -662,6 +662,10 @@
       if (key === null) return;
       key = key.trim();
       state.apiKey = key;
+      // A different key may reach a different set of models, so re-discover on next analysis.
+      localStorage.removeItem(MODEL_STORAGE_KEY);
+      chosenModel = '';
+      badModels = {};
       if (key) {
         localStorage.setItem('geminiApiKey', key);
         state.showKeyBanner = false;
@@ -805,7 +809,7 @@
       state.uploadPhase = 'Analyzing visually...';
       render();
 
-      return callGemini(parts, signal).then(function (firstPass) {
+      return analyze(parts, signal).then(function (firstPass) {
         var reasoning = String(firstPass.reasoning || '').toLowerCase();
         var isMixed = reasoning.indexOf('mixed') !== -1 || reasoning.indexOf('bowl') !== -1;
         var isLowConfidence = String(firstPass.confidence || '').toLowerCase().indexOf('low') !== -1 ||
@@ -816,7 +820,7 @@
         // Ambiguous plate: run three estimates and take the median to damp outliers.
         state.uploadPhase = 'Refining estimate via consensus...';
         render();
-        return Promise.all([callGemini(parts, signal), callGemini(parts, signal)]).then(function (rest) {
+        return Promise.all([analyze(parts, signal), analyze(parts, signal)]).then(function (rest) {
           var results = [firstPass, rest[0], rest[1]].sort(function (a, b) {
             return a.totalCalories - b.totalCalories;
           });
@@ -867,9 +871,76 @@
     });
   }
 
-  var MODEL = 'gemini-2.5-flash';
+  // Model names get retired, and which ones a key can reach varies by account. Rather than
+  // hardcode one, ask the API what this key can use and remember the choice.
+  var API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+  var MODEL_STORAGE_KEY = 'geminiModel';
+  var chosenModel = localStorage.getItem(MODEL_STORAGE_KEY) || '';
+  var badModels = {};
 
-  function callGemini(imageParts, signal) {
+  function scoreModel(name) {
+    if (/embed|aqa|imagen|image-generation|tts|audio|veo|learnlm/.test(name)) return -1;
+    var score = 0;
+    if (/flash/.test(name)) score += 100;          // fast and cheap, plenty for photos
+    else if (/pro/.test(name)) score += 60;
+    else return -1;
+    if (/lite/.test(name)) score -= 30;            // weaker at portion estimates
+    if (/preview|exp|thinking/.test(name)) score -= 20;
+    var version = name.match(/(\d+)\.(\d+)/);      // prefer newer generations
+    if (version) score += (+version[1]) * 5 + (+version[2]);
+    if (/latest$/.test(name)) score += 3;
+    return score;
+  }
+
+  function pickModel(models) {
+    var best = null, bestScore = 0;
+    models.forEach(function (m) {
+      var methods = m.supportedGenerationMethods || [];
+      if (methods.indexOf('generateContent') === -1) return;
+      var name = String(m.name || '').replace(/^models\//, '');
+      if (badModels[name]) return;
+      var score = scoreModel(name);
+      if (score > bestScore) { bestScore = score; best = name; }
+    });
+    return best;
+  }
+
+  function ensureModel(signal) {
+    if (chosenModel && !badModels[chosenModel]) return Promise.resolve(chosenModel);
+    return fetch(API_BASE + '/models?pageSize=200', {
+      headers: { 'x-goog-api-key': state.apiKey },
+      signal: signal
+    }).then(function (res) {
+      if (res.status === 400 || res.status === 403) {
+        throw new Error('Your API key was rejected (' + res.status + '). Check it in the key menu.');
+      }
+      if (!res.ok) throw new Error('Could not reach the model list (' + res.status + ').');
+      return res.json();
+    }).then(function (data) {
+      var pick = pickModel(data.models || []);
+      if (!pick) throw new Error('No usable model found for your API key. It may need the Generative Language API enabled.');
+      chosenModel = pick;
+      localStorage.setItem(MODEL_STORAGE_KEY, pick);
+      return pick;
+    });
+  }
+
+  // Run the analysis, re-discovering the model once if the stored one has gone away.
+  function analyze(imageParts, signal) {
+    return ensureModel(signal).then(function (model) {
+      return callGemini(model, imageParts, signal).catch(function (err) {
+        if (err.status !== 404) throw err;
+        badModels[model] = true;
+        localStorage.removeItem(MODEL_STORAGE_KEY);
+        chosenModel = '';
+        return ensureModel(signal).then(function (retryModel) {
+          return callGemini(retryModel, imageParts, signal);
+        });
+      });
+    });
+  }
+
+  function callGemini(model, imageParts, signal) {
     var correctionContext = state.corrections.length
       ? '\n\nCALIBRATION HISTORY:\nUser past corrections:\n' + state.corrections.map(function (c) {
           return '- Guessed ' + c.oldPortion + ', corrected to ' + c.newPortion;
@@ -924,7 +995,7 @@
       }
     };
 
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent';
+    var url = API_BASE + '/models/' + model + ':generateContent';
     return fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.apiKey },
@@ -932,6 +1003,12 @@
       signal: signal
     }).then(function (response) {
       if (!response.ok) {
+        if (response.status === 404) {
+          // Surfaced to analyze(), which retries once with a freshly discovered model.
+          var missing = new Error('Model ' + model + ' is unavailable for your key.');
+          missing.status = 404;
+          throw missing;
+        }
         if (response.status === 400 || response.status === 403) {
           throw new Error('API rejected the request (' + response.status + '). Check your API key.');
         }

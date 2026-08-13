@@ -1,6 +1,6 @@
 // MacroTracker service worker: caches the app shell so the log stays readable offline.
 // Bump CACHE when any shell file changes so clients pick up the new version.
-const CACHE = 'macrotracker-v1';
+const CACHE = 'macrotracker-v2';
 
 const SHELL = [
   './',
