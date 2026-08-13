@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MacroTracker AI</title>
+<meta name="description" content="Photograph a meal, get a calorie and macro estimate, and keep a daily log on your phone.">
+<meta name="theme-color" content="#059669">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MacroTracker">
+<style>
+  :root{
+    --bg:#f9fafb; --card:#fff; --text:#111827; --muted:#6b7280; --faint:#9ca3af;
+    --line:#e5e7eb; --line-soft:#f3f4f6; --tint:#f9fafb;
+    --emerald:#059669; --emerald-dark:#047857; --emerald-soft:#ecfdf5; --emerald-text:#047857;
+    --blue:#2563eb; --amber:#f59e0b; --red:#ef4444;
+    --shadow:0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-lg:0 10px 24px rgba(0,0,0,.13);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,ui-sans-serif,sans-serif;
+    line-height:1.5; padding-bottom:8rem;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,input{font:inherit}
+  button{cursor:pointer; border:0; background:none; color:inherit; padding:0}
+  input{font-size:16px}
+  .wrap{max-width:48rem; margin:0 auto; padding:0 1rem}
+  .icon{width:1.25rem;height:1.25rem;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .icon.sm{width:1rem;height:1rem}
+  .icon.xs{width:.875rem;height:.875rem}
+  .icon.lg{width:1.5rem;height:1.5rem}
+  .icon.xl{width:2rem;height:2rem}
+  .spin{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- header ---------- */
+  header{
+    background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:40; box-shadow:var(--shadow);
+    padding-top:max(env(safe-area-inset-top),0px);
+  }
+  .strip{display:flex;align-items:center;justify-content:center;gap:.5rem;
+    font-size:.75rem;font-weight:600;padding:.5rem 1rem}
+  .strip.offline{background:#fef3c7;color:#92400e}
+  .header-body{padding:.75rem 1rem 1rem}
+  .titlebar{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:.5rem 0 1rem}
+  h1{margin:0;font-size:clamp(1.05rem,4.4vw,1.25rem);font-weight:700;display:flex;align-items:center;
+    gap:.5rem;color:#1f2937;min-width:0;flex:1 1 auto}
+  h1 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  h1 .icon{color:#10b981}
+  .header-tools{display:flex;align-items:center;gap:.25rem;flex:0 0 auto}
+  .datenav{display:flex;align-items:center;gap:.125rem;background:var(--line-soft);border-radius:999px;padding:.25rem}
+  .datenav button{padding:.25rem;border-radius:999px;display:flex}
+  .datenav button:hover:not(:disabled){background:var(--line)}
+  .datenav button:disabled{color:#d1d5db;cursor:default}
+  .datelabel{display:flex;align-items:center;gap:.25rem;padding:0 .25rem;justify-content:center}
+  .datelabel .icon{color:var(--emerald)}
+  .datelabel span{font-size:.875rem;font-weight:600;color:#374151;white-space:nowrap}
+  .iconbtn{padding:.5rem;border-radius:999px;display:flex;color:var(--muted)}
+  .iconbtn:hover{background:var(--line-soft);color:var(--text)}
+
+  .summary{background:var(--tint);border:1px solid var(--line-soft);border-radius:.75rem;padding:1rem}
+  .summary-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.75rem;gap:.5rem}
+  .summary-top h2{margin:0;font-size:.8125rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
+  .summary-top p{margin:.125rem 0 0;font-size:.75rem;color:var(--muted)}
+  .target-btn{display:flex;align-items:center;gap:.25rem;font-size:.75rem;font-weight:600;
+    color:var(--emerald-text);background:var(--emerald-soft);padding:.3rem .5rem;border-radius:.375rem}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;text-align:center}
+  .stat{display:flex;flex-direction:column}
+  .stat .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;font-weight:600}
+  .stat .val{font-size:1.375rem;font-weight:700;color:#1f2937;line-height:1.2}
+  .stat .val.small{font-size:1.25rem}
+  .stat .val.over{color:var(--red)}
+  .v-pro{color:var(--blue)} .v-carb{color:var(--emerald)} .v-fat{color:var(--amber)}
+
+  /* ---------- banners ---------- */
+  .banner{display:flex;justify-content:space-between;align-items:center;gap:.75rem;
+    padding:.75rem 1rem;font-size:.875rem;position:relative;z-index:30}
+  .banner.install{background:var(--emerald);color:#fff;box-shadow:var(--shadow)}
+  .banner.key{background:#1f2937;color:#fff}
+  .banner-msg{display:flex;align-items:center;gap:.75rem;min-width:0}
+  .banner-actions{display:flex;align-items:center;gap:.5rem;flex:0 0 auto}
+  .banner .pill{background:#fff;color:var(--emerald-text);padding:.25rem .75rem;border-radius:.375rem;font-weight:700;font-size:.75rem}
+  .banner.key .pill{color:#111827}
+  .banner .dismiss{padding:.25rem;display:flex;opacity:.7}
+  .banner .dismiss:hover{opacity:1}
+  .inline-icon{width:1rem;height:1rem;display:inline-block;vertical-align:-.15em;margin:0 .2em;
+    stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---------- body ---------- */
+  main{padding:1.5rem 0}
+  .alert{display:flex;align-items:flex-start;gap:.75rem;padding:1rem;border-radius:.75rem;
+    background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;margin-bottom:1.5rem}
+  .alert p{margin:0;font-size:.875rem;flex:1}
+  .alert button{opacity:.5;display:flex}
+  .alert button:hover{opacity:1}
+
+  .status{border:2px solid var(--line);border-radius:1rem;padding:2rem;display:flex;flex-direction:column;
+    align-items:center;text-align:center;background:var(--card);box-shadow:var(--shadow);margin-bottom:1.5rem;position:relative}
+  .status .cancel{position:absolute;top:1rem;right:1rem;font-size:.75rem;font-weight:600;color:var(--faint);
+    background:var(--tint);padding:.25rem .75rem;border-radius:.375rem}
+  .status .cancel:hover{color:var(--red)}
+  .status .icon{width:2.5rem;height:2.5rem;color:#10b981;margin-bottom:1rem}
+  .status h3{margin:0;font-size:1.125rem;font-weight:500;color:#1f2937}
+  .status p{margin:.25rem 0 0;font-size:.875rem;color:var(--muted)}
+
+  .empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:3rem 1rem}
+  .empty-card{width:100%;max-width:24rem;border:2px dashed #d1d5db;border-radius:1.5rem;padding:2rem;
+    background:var(--card);box-shadow:var(--shadow)}
+  .empty-actions{display:flex;justify-content:center;gap:1rem;margin-bottom:1.5rem}
+  .round{padding:1rem;border-radius:999px;display:flex}
+  .round.green{background:var(--emerald-soft);color:var(--emerald)}
+  .round.blue{background:#eff6ff;color:var(--blue)}
+  .empty h3{margin:0 0 .5rem;font-size:1.125rem;font-weight:700;color:#1f2937}
+  .empty p{margin:0;font-size:.875rem;color:var(--muted)}
+
+  .meals{display:flex;flex-direction:column;gap:1.5rem}
+  .meal{background:var(--card);border:1px solid var(--line-soft);border-radius:1rem;
+    box-shadow:var(--shadow);overflow:hidden;position:relative}
+  .meal .del{position:absolute;top:.75rem;right:.75rem;padding:.5rem;background:rgba(255,255,255,.92);
+    color:var(--faint);border-radius:999px;box-shadow:var(--shadow);z-index:10;display:flex}
+  .meal .del:hover{color:var(--red)}
+  .meal-head{padding:1rem;border-bottom:1px solid var(--line-soft);font-size:.875rem;color:var(--muted)}
+  .meal-head strong{font-weight:500;color:#374151}
+  .meal-body{display:flex;flex-direction:column}
+  .shots{background:var(--line-soft);display:flex;overflow-x:auto;scroll-snap-type:x mandatory}
+  .shots img{width:100%;height:12rem;object-fit:cover;scroll-snap-align:center;flex:0 0 100%}
+  .meal-main{padding:1.25rem}
+  .kcal-row{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem;margin-bottom:1rem}
+  .kcal{font-size:1.875rem;font-weight:800;color:#111827}
+  .kcal-unit{color:var(--muted);font-weight:500;margin-left:.25rem}
+  .range{font-size:.75rem;color:var(--faint);font-weight:500;background:var(--line-soft);
+    padding:.25rem .5rem;border-radius:.375rem;white-space:nowrap}
+  .macros{background:var(--tint);border-radius:.75rem;padding:.75rem;display:flex;margin-bottom:1.25rem}
+  .macro{width:33.333%;text-align:center}
+  .macro+.macro{border-left:1px solid var(--line)}
+  .macro .k{font-size:.625rem;color:var(--muted);font-weight:700;margin-bottom:.25rem}
+  .macro .v{font-weight:700}
+  .section-label{font-size:.75rem;font-weight:700;color:var(--faint);text-transform:uppercase;
+    letter-spacing:.05em;margin:0 0 .75rem}
+  ul.items{list-style:none;margin:0 0 1.25rem;padding:0;display:flex;flex-direction:column;gap:.25rem}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.875rem;
+    border-bottom:1px solid var(--line-soft);padding-bottom:.5rem}
+  .item-name{display:flex;align-items:center;gap:.5rem;min-width:0}
+  .dot{width:.5rem;height:.5rem;border-radius:999px;flex:0 0 auto}
+  .dot.high{background:#34d399} .dot.med{background:#fbbf24} .dot.low{background:#f87171}
+  .item-name .n{font-weight:500;color:#1f2937}
+  .item-name .p{color:var(--faint)}
+  .item-right{display:flex;align-items:center;gap:.5rem;flex:0 0 auto}
+  .item-right .c{font-weight:500;color:#4b5563}
+  .edit{color:#d1d5db;display:flex;padding:.25rem}
+  .edit:hover{color:#4b5563}
+  .item.editing{display:flex;flex-direction:column;align-items:stretch;gap:.5rem;background:var(--tint);
+    padding:.5rem;border-radius:.375rem;border:1px solid var(--line)}
+  .item.editing .n{font-weight:500;font-size:.875rem;color:#1f2937}
+  .edit-row{display:flex;gap:.5rem;align-items:center}
+  .edit-row input{border:1px solid var(--line);border-radius:.375rem;padding:.375rem .5rem;
+    font-size:.875rem;min-width:0}
+  .edit-row input[name=portion]{flex:1}
+  .edit-row input[name=cals]{width:5.5rem}
+  .edit-row .save{padding:.375rem;background:var(--emerald-soft);color:var(--emerald-text);
+    border-radius:.375rem;display:flex}
+  details{font-size:.75rem;border-top:1px solid var(--line-soft);padding-top:.75rem;margin-top:.75rem}
+  summary{font-weight:600;color:#4b5563;cursor:pointer;margin-bottom:.5rem}
+  .reason{padding-left:1rem;border-left:2px solid #a7f3d0;color:#4b5563;
+    display:flex;flex-direction:column;gap:.75rem;margin-top:.5rem}
+  .reason b{color:#1f2937;display:block;margin-bottom:.25rem}
+  .reason .r{font-style:italic;margin:0}
+  .reason ul{margin:0;padding-left:1rem;display:flex;flex-direction:column;gap:.125rem}
+  .reason li.sys{color:var(--emerald-text);font-weight:500}
+
+  /* ---------- floating buttons ---------- */
+  .fab{position:fixed;right:1.5rem;bottom:max(env(safe-area-inset-bottom),1.5rem);
+    display:flex;flex-direction:column;gap:.75rem;z-index:50}
+  .fab button{border-radius:999px;box-shadow:var(--shadow-lg);display:flex;justify-content:center}
+  .fab .cam{background:#fff;color:var(--emerald);border:1px solid #d1fae5;padding:.75rem}
+  .fab .cam:hover{background:var(--emerald-soft)}
+  .fab .add{background:var(--emerald);color:#fff;padding:1rem}
+  .fab .add:hover{background:var(--emerald-dark)}
+
+  .hidden{display:none !important}
+
+  @media (min-width:768px){
+    .meal-body{flex-direction:row}
+    .shots{width:33.333%;flex-direction:column}
+    .shots img{height:100%;min-height:12rem}
+    .meal-main{width:66.667%}
+  }
+</style>
+</head>
+<body>
+
+<header id="header"></header>
+<div id="banners"></div>
+<main class="wrap" id="main"></main>
+<div id="fab"></div>
+
+<input type="file" id="pick-files" multiple accept="image/*" class="hidden">
+<input type="file" id="pick-camera" accept="image/*" capture="environment" class="hidden">
+
+<noscript>
+  <div class="wrap" style="padding:2rem 1rem">MacroTracker needs JavaScript enabled.</div>
+</noscript>
+
+<script>
+(function () {
+  'use strict';
+
+  // ==========================================================================
+  // Icons (lucide paths, inlined so the app has no network dependencies)
+  // ==========================================================================
+  var PATHS = {
+    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+    apple: '<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>',
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+    chevronRight: '<path d="m9 18 6-6-6-6"/>',
+    calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/>',
+    target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+    pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    shieldAlert: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>',
+    wifiOff: '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>',
+    key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>'
+  };
+  function icon(name, cls) {
+    return '<svg viewBox="0 0 24 24" class="icon ' + (cls || '') + '" aria-hidden="true">' + PATHS[name] + '</svg>';
+  }
+  function inlineIcon(name) {
+    return '<svg viewBox="0 0 24 24" class="inline-icon" aria-hidden="true">' + PATHS[name] + '</svg>';
+  }
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ==========================================================================
+  // Storage: IndexedDB for photos, localStorage for the log itself
+  // ==========================================================================
+  var DB_NAME = 'MacroTrackerDB';
+  var STORE_NAME = 'images';
+
+  function initDB() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function saveImageToDB(id, dataUrl) {
+    return initDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(dataUrl, id);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  function getImageFromDB(id) {
+    return initDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE_NAME, 'readonly');
+        var req = tx.objectStore(STORE_NAME).get(id);
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function deleteImageFromDB(id) {
+    return initDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = function () { resolve(); };
+      });
+    });
+  }
+
+  function compressImage(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('Could not read that image.')); };
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('Could not decode that image.')); };
+        img.onload = function () {
+          var MAX_DIM = 1024;
+          var width = img.width, height = img.height;
+          if (width > height && width > MAX_DIM) {
+            height *= MAX_DIM / width; width = MAX_DIM;
+          } else if (height > MAX_DIM) {
+            width *= MAX_DIM / height; height = MAX_DIM;
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ==========================================================================
+  // Dates
+  // ==========================================================================
+  function getLocalDateStr(date) {
+    var d = date || new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  function formatDisplayDate(dateStr) {
+    if (dateStr === getLocalDateStr()) return 'Today';
+    var p = dateStr.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  // ==========================================================================
+  // State
+  // ==========================================================================
+  var state = {
+    currentDate: getLocalDateStr(),
+    meals: [],
+    imageUrls: {},
+    corrections: [],
+    isUploading: false,
+    uploadPhase: '',
+    error: null,
+    calorieTarget: localStorage.getItem('calorieTarget') || '',
+    apiKey: localStorage.getItem('geminiApiKey') || '',
+    isOffline: !navigator.onLine,
+    deferredPrompt: null,
+    showInstallBanner: false,
+    showKeyBanner: false,
+    isIOS: /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()),
+    isStandalone: ('standalone' in navigator && navigator.standalone) ||
+      window.matchMedia('(display-mode: standalone)').matches,
+    editing: null
+  };
+
+  var abortController = null;
+
+  try {
+    state.corrections = JSON.parse(localStorage.getItem('corrections') || '[]');
+  } catch (e) { state.corrections = []; }
+
+  state.showInstallBanner = !state.isStandalone;
+  state.showKeyBanner = !state.apiKey;
+
+  function persistMeals() {
+    localStorage.setItem('meals-' + state.currentDate, JSON.stringify(state.meals));
+  }
+
+  function loadDay() {
+    var stored = localStorage.getItem('meals-' + state.currentDate);
+    var meals = [];
+    try { meals = stored ? JSON.parse(stored) : []; } catch (e) { meals = []; }
+    state.meals = meals;
+    render();
+
+    // Photos come out of IndexedDB asynchronously; paint the log first, then fill them in.
+    var ids = [];
+    meals.forEach(function (meal) { ids = ids.concat(meal.imageIds || []); });
+    Promise.all(ids.map(function (id) {
+      return getImageFromDB(id).then(function (url) { return { id: id, url: url }; });
+    })).then(function (loaded) {
+      var urls = {};
+      loaded.forEach(function (entry) { if (entry.url) urls[entry.id] = entry.url; });
+      state.imageUrls = urls;
+      render();
+    }).catch(function () { /* photos are optional; the numbers still render */ });
+  }
+
+  function totals() {
+    return state.meals.reduce(function (acc, meal) {
+      var a = meal.analysis || {};
+      var m = a.macros || {};
+      acc.calories += a.totalCalories || 0;
+      acc.protein += m.protein || 0;
+      acc.carbs += m.carbs || 0;
+      acc.fat += m.fat || 0;
+      return acc;
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  }
+
+  // ==========================================================================
+  // Rendering
+  // ==========================================================================
+  var elHeader = document.getElementById('header');
+  var elBanners = document.getElementById('banners');
+  var elMain = document.getElementById('main');
+  var elFab = document.getElementById('fab');
+  var filesInput = document.getElementById('pick-files');
+  var cameraInput = document.getElementById('pick-camera');
+
+  function renderHeader() {
+    var t = totals();
+    var today = getLocalDateStr();
+    var over = state.calorieTarget && t.calories > Number(state.calorieTarget);
+
+    elHeader.innerHTML =
+      (state.isOffline
+        ? '<div class="strip offline">' + icon('wifiOff', 'sm') +
+          ' You are currently offline. Viewing mode only.</div>'
+        : '') +
+      '<div class="header-body wrap">' +
+        '<div class="titlebar">' +
+          '<h1>' + icon('apple', 'lg') + '<span>MacroTracker</span></h1>' +
+          '<div class="header-tools">' +
+            '<button class="iconbtn" data-action="set-key" title="API key" aria-label="API key">' +
+              icon('key', 'sm') +
+            '</button>' +
+            '<div class="datenav">' +
+              '<button data-action="prev-day" aria-label="Previous day">' + icon('chevronLeft') + '</button>' +
+              '<div class="datelabel">' + icon('calendar', 'sm') +
+                '<span>' + esc(formatDisplayDate(state.currentDate)) + '</span></div>' +
+              '<button data-action="next-day" aria-label="Next day"' +
+                (state.currentDate === today ? ' disabled' : '') + '>' + icon('chevronRight') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="summary">' +
+          '<div class="summary-top">' +
+            '<div><h2>Daily Summary</h2><p>' + state.meals.length +
+              (state.meals.length === 1 ? ' log' : ' logs') + '</p></div>' +
+            '<button class="target-btn" data-action="set-target">' + icon('target', 'xs') + ' ' +
+              (state.calorieTarget ? 'Target: ' + esc(state.calorieTarget) : 'Set Target') +
+            '</button>' +
+          '</div>' +
+          '<div class="stats">' +
+            stat('Cals', t.calories, '', over) +
+            stat('Pro', t.protein + 'g', 'v-pro') +
+            stat('Carb', t.carbs + 'g', 'v-carb') +
+            stat('Fat', t.fat + 'g', 'v-fat') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function stat(label, value, cls, over) {
+    var small = cls ? ' small' : '';
+    return '<div class="stat"><span class="label">' + label + '</span>' +
+      '<span class="val' + small + ' ' + (cls || '') + (over ? ' over' : '') + '">' + esc(value) + '</span></div>';
+  }
+
+  function renderBanners() {
+    var html = '';
+
+    if (state.showKeyBanner && !state.apiKey) {
+      html +=
+        '<div class="banner key">' +
+          '<div class="banner-msg">' + icon('key', 'sm') +
+            '<span>Add a free Google Gemini API key to analyze meals. It stays on this device.</span></div>' +
+          '<div class="banner-actions">' +
+            '<button class="pill" data-action="set-key">Add key</button>' +
+            '<button class="dismiss" data-action="hide-key" aria-label="Dismiss">' + icon('x', 'sm') + '</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    if (!state.isStandalone && state.showInstallBanner) {
+      html +=
+        '<div class="banner install">' +
+          '<div class="banner-msg">' + icon('download', 'sm') + '<span>' +
+            (state.isIOS
+              ? 'Tap ' + inlineIcon('share') + ' then <b>Add to Home Screen</b> to install the app.'
+              : 'Install MacroTracker to your home screen.') +
+          '</span></div>' +
+          '<div class="banner-actions">' +
+            (!state.isIOS && state.deferredPrompt
+              ? '<button class="pill" data-action="install">Install</button>' : '') +
+            '<button class="dismiss" data-action="hide-install" aria-label="Dismiss">' + icon('x', 'sm') + '</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    elBanners.innerHTML = html;
+  }
+
+  function renderMain() {
+    var html = '';
+
+    if (state.error) {
+      html +=
+        '<div class="alert">' + icon('shieldAlert') +
+          '<p>' + esc(state.error) + '</p>' +
+          '<button data-action="clear-error" aria-label="Dismiss">' + icon('x', 'sm') + '</button>' +
+        '</div>';
+    }
+
+    if (state.isUploading) {
+      html +=
+        '<div class="status">' +
+          '<button class="cancel" data-action="cancel-upload">Cancel</button>' +
+          icon('loader', 'spin') +
+          '<h3>' + esc(state.uploadPhase) + '</h3>' +
+          '<p>Models running: Visual Analysis &amp; Macro Validation.</p>' +
+        '</div>';
+    }
+
+    if (!state.meals.length && !state.isUploading) {
+      html +=
+        '<div class="empty"><div class="empty-card">' +
+          '<div class="empty-actions">' +
+            '<button class="round green" data-action="camera" aria-label="Take a photo">' + icon('camera', 'xl') + '</button>' +
+            '<button class="round blue" data-action="pick" aria-label="Choose photos">' + icon('image', 'xl') + '</button>' +
+          '</div>' +
+          '<h3>Log a meal</h3>' +
+          '<p>Select up to 3 photos for better accuracy.</p>' +
+        '</div></div>';
+    }
+
+    html += '<div class="meals">' + state.meals.map(renderMeal).join('') + '</div>';
+    elMain.innerHTML = html;
+  }
+
+  function renderMeal(meal) {
+    var a = meal.analysis || {};
+    var m = a.macros || {};
+    var shots = (meal.imageIds || []).map(function (id, i) {
+      var url = state.imageUrls[id];
+      return url ? '<img src="' + url + '" alt="Meal photo ' + (i + 1) + '">' : '';
+    }).join('');
+
+    return '<div class="meal">' +
+      '<button class="del" data-action="delete-meal" data-meal="' + esc(meal.id) + '" aria-label="Delete meal">' +
+        icon('trash', 'sm') + '</button>' +
+      '<div class="meal-head"><strong>Logged at ' + esc(meal.timestamp || '') + '</strong></div>' +
+      '<div class="meal-body">' +
+        (shots ? '<div class="shots">' + shots + '</div>' : '') +
+        '<div class="meal-main">' +
+          '<div class="kcal-row">' +
+            '<div><span class="kcal">' + esc(a.totalCalories) + '</span><span class="kcal-unit">kcal</span></div>' +
+            '<div class="range">Range: ' + esc(a.caloriesLow) + ' - ' + esc(a.caloriesHigh) + '</div>' +
+          '</div>' +
+          '<div class="macros">' +
+            '<div class="macro"><div class="k">PRO</div><div class="v v-pro">' + esc(m.protein) + 'g</div></div>' +
+            '<div class="macro"><div class="k">CARBS</div><div class="v v-carb">' + esc(m.carbs) + 'g</div></div>' +
+            '<div class="macro"><div class="k">FAT</div><div class="v v-fat">' + esc(m.fat) + 'g</div></div>' +
+          '</div>' +
+          '<h4 class="section-label">Item Breakdown</h4>' +
+          '<ul class="items">' +
+            (a.items || []).map(function (item, i) { return renderItem(item, meal.id, i); }).join('') +
+          '</ul>' +
+          '<details>' +
+            '<summary>Show AI Reasoning &amp; Context</summary>' +
+            '<div class="reason">' +
+              '<div><b>Reasoning Pass:</b><p class="r">' + esc(a.reasoning) + '</p></div>' +
+              '<div><b>Assumptions:</b><ul>' +
+                (a.assumptions || []).map(function (note) {
+                  var sys = String(note).indexOf('System note') !== -1;
+                  return '<li' + (sys ? ' class="sys"' : '') + '>' + esc(note) + '</li>';
+                }).join('') +
+              '</ul></div>' +
+            '</div>' +
+          '</details>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderItem(item, mealId, index) {
+    // meal.id is a number but data attributes come back as strings, so compare as strings.
+    var editing = state.editing && state.editing.mealId === String(mealId) && state.editing.index === index;
+
+    if (editing) {
+      return '<li class="item editing" data-meal="' + esc(mealId) + '" data-index="' + index + '">' +
+        '<div class="n">' + esc(item.name) + '</div>' +
+        '<div class="edit-row">' +
+          '<input type="text" name="portion" value="' + esc(item.portion) + '" aria-label="Portion">' +
+          '<input type="number" name="cals" value="' + esc(item.calories) + '" aria-label="Calories" inputmode="numeric">' +
+          '<button class="save" data-action="save-item" aria-label="Save">' + icon('check', 'sm') + '</button>' +
+        '</div>' +
+      '</li>';
+    }
+
+    var conf = String(item.confidence || '').toUpperCase();
+    var dot = conf === 'HIGH' ? 'high' : conf === 'MEDIUM' ? 'med' : 'low';
+    return '<li class="item">' +
+      '<div class="item-name"><span class="dot ' + dot + '"></span>' +
+        '<span class="n">' + esc(item.name) + '</span>' +
+        '<span class="p">(' + esc(item.portion) + ')</span></div>' +
+      '<div class="item-right"><span class="c">' + esc(item.calories) + ' kcal</span>' +
+        '<button class="edit" data-action="edit-item" data-meal="' + esc(mealId) + '" data-index="' + index +
+          '" aria-label="Edit item">' + icon('pencil', 'xs') + '</button></div>' +
+    '</li>';
+  }
+
+  function renderFab() {
+    var show = !state.isUploading && state.currentDate === getLocalDateStr() && !state.isOffline;
+    elFab.innerHTML = show
+      ? '<div class="fab">' +
+          '<button class="cam" data-action="camera" aria-label="Take a photo">' + icon('camera') + '</button>' +
+          '<button class="add" data-action="pick" aria-label="Add photos">' + icon('plus', 'lg') + '</button>' +
+        '</div>'
+      : '';
+  }
+
+  function render() {
+    renderHeader();
+    renderBanners();
+    renderMain();
+    renderFab();
+    if (state.editing) {
+      var input = elMain.querySelector('.item.editing input[name=portion]');
+      if (input) { input.focus(); input.select(); }
+    }
+  }
+
+  // ==========================================================================
+  // Actions
+  // ==========================================================================
+  var actions = {
+    'prev-day': function () { changeDate(-1); },
+    'next-day': function () { changeDate(1); },
+
+    'set-target': function () {
+      var target = window.prompt('Set your daily calorie target:', state.calorieTarget);
+      if (target === null) return;
+      target = target.trim();
+      if (target !== '' && isNaN(Number(target))) return;
+      state.calorieTarget = target;
+      localStorage.setItem('calorieTarget', target);
+      render();
+    },
+
+    'set-key': function () {
+      var key = window.prompt(
+        'Paste your Google Gemini API key (aistudio.google.com/apikey).\n' +
+        'It is stored only on this device, in this browser.',
+        state.apiKey
+      );
+      if (key === null) return;
+      key = key.trim();
+      state.apiKey = key;
+      if (key) {
+        localStorage.setItem('geminiApiKey', key);
+        state.showKeyBanner = false;
+      } else {
+        localStorage.removeItem('geminiApiKey');
+        state.showKeyBanner = true;
+      }
+      render();
+    },
+
+    'hide-key': function () { state.showKeyBanner = false; render(); },
+    'hide-install': function () { state.showInstallBanner = false; render(); },
+
+    'install': function () {
+      if (!state.deferredPrompt) return;
+      state.deferredPrompt.prompt();
+      state.deferredPrompt.userChoice.then(function (choice) {
+        if (choice.outcome === 'accepted') {
+          state.showInstallBanner = false;
+          state.deferredPrompt = null;
+          render();
+        }
+      });
+    },
+
+    'clear-error': function () { state.error = null; render(); },
+    'camera': function () { cameraInput.click(); },
+    'pick': function () { filesInput.click(); },
+
+    'cancel-upload': function () {
+      if (abortController) abortController.abort();
+      state.isUploading = false;
+      state.error = 'Analysis cancelled.';
+      render();
+    },
+
+    'delete-meal': function (el) {
+      var id = el.getAttribute('data-meal');
+      if (!window.confirm('Delete this meal?')) return;
+      var meal = state.meals.filter(function (m) { return String(m.id) === id; })[0];
+      if (meal) (meal.imageIds || []).forEach(function (imgId) { deleteImageFromDB(imgId); });
+      state.meals = state.meals.filter(function (m) { return String(m.id) !== id; });
+      persistMeals();
+      render();
+    },
+
+    'edit-item': function (el) {
+      state.editing = { mealId: el.getAttribute('data-meal'), index: +el.getAttribute('data-index') };
+      render();
+    },
+
+    'save-item': function (el) {
+      var li = el.closest('.item.editing');
+      var mealId = li.getAttribute('data-meal');
+      var index = +li.getAttribute('data-index');
+      var portion = li.querySelector('input[name=portion]').value;
+      var calsRaw = li.querySelector('input[name=cals]').value;
+
+      var meal = state.meals.filter(function (m) { return String(m.id) === mealId; })[0];
+      state.editing = null;
+      if (!meal) { render(); return; }
+
+      var item = meal.analysis.items[index];
+      var newCals = parseInt(calsRaw, 10);
+      if (isNaN(newCals)) newCals = item.calories;
+
+      saveCorrection({
+        oldName: item.name, oldPortion: item.portion, oldCalories: item.calories,
+        newPortion: portion, newCalories: newCals
+      });
+
+      meal.analysis.totalCalories = meal.analysis.totalCalories - item.calories + newCals;
+      item.portion = portion;
+      item.calories = newCals;
+      persistMeals();
+      render();
+    }
+  };
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var fn = actions[el.getAttribute('data-action')];
+    if (fn) { e.preventDefault(); fn(el); }
+  });
+
+  function changeDate(offset) {
+    var p = state.currentDate.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + offset);
+    if (offset > 0 && getLocalDateStr(d) > getLocalDateStr()) return;
+    state.currentDate = getLocalDateStr(d);
+    state.editing = null;
+    state.imageUrls = {};
+    loadDay();
+  }
+
+  function saveCorrection(correction) {
+    state.corrections = [correction].concat(state.corrections).slice(0, 10);
+    localStorage.setItem('corrections', JSON.stringify(state.corrections));
+  }
+
+  // ==========================================================================
+  // Upload + analysis
+  // ==========================================================================
+  filesInput.addEventListener('change', handleFileUpload);
+  cameraInput.addEventListener('change', handleFileUpload);
+
+  function handleFileUpload(event) {
+    var files = Array.prototype.slice.call(event.target.files, 0, 3);
+    event.target.value = '';
+    if (!files.length) return;
+
+    if (state.isOffline) {
+      state.error = 'You are currently offline. Please reconnect to analyze meals.';
+      render();
+      return;
+    }
+    if (!state.apiKey) {
+      state.error = 'Add your Gemini API key first (the key button in the header).';
+      state.showKeyBanner = true;
+      render();
+      return;
+    }
+
+    state.error = null;
+    state.isUploading = true;
+    state.uploadPhase = 'Compressing images...';
+    abortController = new AbortController();
+    var signal = abortController.signal;
+    render();
+
+    var compressed;
+
+    Promise.all(files.map(compressImage)).then(function (images) {
+      compressed = images;
+      var parts = images.map(function (dataUrl) {
+        return { inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } };
+      });
+
+      state.uploadPhase = 'Analyzing visually...';
+      render();
+
+      return callGemini(parts, signal).then(function (firstPass) {
+        var reasoning = String(firstPass.reasoning || '').toLowerCase();
+        var isMixed = reasoning.indexOf('mixed') !== -1 || reasoning.indexOf('bowl') !== -1;
+        var isLowConfidence = String(firstPass.confidence || '').toLowerCase().indexOf('low') !== -1 ||
+          (firstPass.items || []).some(function (i) { return String(i.confidence).toUpperCase() === 'LOW'; });
+
+        if (!isMixed && !isLowConfidence) return firstPass;
+
+        // Ambiguous plate: run three estimates and take the median to damp outliers.
+        state.uploadPhase = 'Refining estimate via consensus...';
+        render();
+        return Promise.all([callGemini(parts, signal), callGemini(parts, signal)]).then(function (rest) {
+          var results = [firstPass, rest[0], rest[1]].sort(function (a, b) {
+            return a.totalCalories - b.totalCalories;
+          });
+          var median = results[1];
+          median.assumptions = (median.assumptions || []).concat(
+            'System note: Used median of 3 parallel estimations due to visual ambiguity.'
+          );
+          return median;
+        });
+      });
+    }).then(function (result) {
+      var m = result.macros || {};
+      var calculated = (m.protein || 0) * 4 + (m.carbs || 0) * 4 + (m.fat || 0) * 9;
+      if (Math.abs(calculated - result.totalCalories) > result.totalCalories * 0.1) {
+        result.totalCalories = Math.round(calculated);
+        result.assumptions = (result.assumptions || []).concat(
+          'System note: Total calories were re-aligned to match macro breakdown.'
+        );
+      }
+
+      state.uploadPhase = 'Saving...';
+      render();
+
+      var imageIds = [];
+      return Promise.all(compressed.map(function (dataUrl) {
+        var id = 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
+        imageIds.push(id);
+        state.imageUrls[id] = dataUrl;
+        return saveImageToDB(id, dataUrl);
+      })).then(function () {
+        state.meals = [{
+          id: Date.now(),
+          imageIds: imageIds,
+          analysis: result,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }].concat(state.meals);
+        persistMeals();
+      });
+    }).catch(function (err) {
+      if (err && err.name === 'AbortError') return;
+      state.error = err && err.message === 'Failed to fetch'
+        ? 'Network error. Check your connection.'
+        : 'Analysis failed: ' + (err && err.message ? err.message : 'unknown error');
+    }).then(function () {
+      state.isUploading = false;
+      abortController = null;
+      render();
+    });
+  }
+
+  var MODEL = 'gemini-2.5-flash';
+
+  function callGemini(imageParts, signal) {
+    var correctionContext = state.corrections.length
+      ? '\n\nCALIBRATION HISTORY:\nUser past corrections:\n' + state.corrections.map(function (c) {
+          return '- Guessed ' + c.oldPortion + ', corrected to ' + c.newPortion;
+        }).join('\n')
+      : '';
+
+    var prompt = 'Analyze this food image(s). Execute a reasoning pass on portion sizes and hidden ' +
+      'calories before outputting the structured estimate.' + correctionContext;
+
+    var systemInstruction = 'Role: Expert visual nutrition estimator.\n' +
+      "1. REASON BEFORE ESTIMATING: Fill 'reasoning' field with logic. Analyze plate diameter, objects, sheen.\n" +
+      '2. BARCODES: If label visible, READ IT directly. Flag HIGH confidence.\n' +
+      '3. ITEMIZATION: Identify each food separately.\n' +
+      "4. CONFIDENCE: 'HIGH', 'MEDIUM', or 'LOW' per item.\n" +
+      '5. NO EXCUSES: Never say "I can\'t tell". Approximate confidently.';
+
+    var payload = {
+      contents: [{ role: 'user', parts: [{ text: prompt }].concat(imageParts) }],
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            reasoning: { type: 'STRING' },
+            items: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  name: { type: 'STRING' }, portion: { type: 'STRING' },
+                  calories: { type: 'INTEGER' }, confidence: { type: 'STRING' }
+                },
+                required: ['name', 'portion', 'calories', 'confidence']
+              }
+            },
+            totalCalories: { type: 'INTEGER' },
+            caloriesLow: { type: 'INTEGER' },
+            caloriesHigh: { type: 'INTEGER' },
+            macros: {
+              type: 'OBJECT',
+              properties: { protein: { type: 'INTEGER' }, carbs: { type: 'INTEGER' }, fat: { type: 'INTEGER' } },
+              required: ['protein', 'carbs', 'fat']
+            },
+            confidence: { type: 'STRING' },
+            assumptions: { type: 'ARRAY', items: { type: 'STRING' } }
+          },
+          required: ['reasoning', 'items', 'totalCalories', 'caloriesLow', 'caloriesHigh',
+                     'macros', 'confidence', 'assumptions']
+        }
+      }
+    };
+
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent';
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.apiKey },
+      body: JSON.stringify(payload),
+      signal: signal
+    }).then(function (response) {
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 403) {
+          throw new Error('API rejected the request (' + response.status + '). Check your API key.');
+        }
+        if (response.status === 429) throw new Error('Rate limited by the API. Try again in a moment.');
+        throw new Error('API Error: ' + response.status);
+      }
+      return response.json();
+    }).then(function (data) {
+      var text = data.candidates && data.candidates[0] && data.candidates[0].content &&
+        data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text;
+      if (!text) throw new Error('The model returned no analysis. Try a clearer photo.');
+      return JSON.parse(text);
+    });
+  }
+
+  // ==========================================================================
+  // PWA + network wiring
+  // ==========================================================================
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    state.deferredPrompt = e;
+    state.showInstallBanner = true;
+    render();
+  });
+
+  window.addEventListener('appinstalled', function () {
+    state.deferredPrompt = null;
+    state.showInstallBanner = false;
+    render();
+  });
+
+  window.addEventListener('online', function () { state.isOffline = false; render(); });
+  window.addEventListener('offline', function () { state.isOffline = true; render(); });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+
+  loadDay();
+})();
+</script>
+</body>
+</html>
